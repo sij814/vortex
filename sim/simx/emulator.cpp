@@ -27,6 +27,7 @@
 #include "cluster.h"
 #include "processor_impl.h"
 #include "local_mem.h"
+#include "mem_sim.h"
 
 using namespace vortex;
 
@@ -442,6 +443,9 @@ Word Emulator::get_csr(uint32_t addr, uint32_t tid, uint32_t wid) {
         CSR_READ_64(VX_CSR_MPM_LMEM_READS, lmem_perf.reads);
         CSR_READ_64(VX_CSR_MPM_LMEM_WRITES, lmem_perf.writes);
         CSR_READ_64(VX_CSR_MPM_LMEM_BANK_ST, lmem_perf.bank_stalls);
+
+        CSR_READ_64(VX_CSR_HBM_BANK_CNTR, proc_perf.memsim.counter);
+        CSR_READ_64(VX_CSR_HBM_BANK_TICK, proc_perf.memsim.ticks);
         }
       } break;
       default: {

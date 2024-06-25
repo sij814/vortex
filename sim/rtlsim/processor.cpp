@@ -49,7 +49,7 @@
   #ifdef PLATFORM_PARAM_LOCAL_MEMORY_BANKS
     #define MEMORY_BANKS PLATFORM_PARAM_LOCAL_MEMORY_BANKS
   #else
-    #define MEMORY_BANKS 2
+    #define MEMORY_BANKS 8
   #endif
 #endif
 

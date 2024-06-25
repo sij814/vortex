@@ -38,7 +38,22 @@ private:
 	ramulator::Gem5Wrapper* dram_;
 
 public:
-
+	Impl(MemSim *simobject, const Config &config)
+		: simobject_(simobject)
+		, config_(config)
+	{
+		ramulator::Config ram_config;
+		ram_config.add("standard", "HBM");
+		ram_config.add("channels", std::to_string(config.channels));
+		ram_config.add("ranks", "1");
+		ram_config.add("speed", "HBM_1Gbps");
+		ram_config.add("org", "HBM_4Gb");
+		ram_config.add("mapping", "defaultmapping");
+		ram_config.set_core_num(config.num_cores);
+		dram_ = new ramulator::Gem5Wrapper(ram_config, MEM_BLOCK_SIZE);
+		Stats::statlist.output("ramulator.hbm.log");
+	}
+	/*
 	Impl(MemSim* simobject, const Config& config) 
 		: simobject_(simobject)
 		, config_(config)
@@ -54,6 +69,7 @@ public:
 		dram_ = new ramulator::Gem5Wrapper(ram_config, MEM_BLOCK_SIZE);
 		Stats::statlist.output("ramulator.ddr4.log");
 	}
+	*/
 
 	~Impl() {
 		dram_->finish();
@@ -65,12 +81,34 @@ public:
 		return perf_stats_;
 	}
 
-	void dram_callback(ramulator::Request& req, uint32_t tag, uint64_t uuid) {
+	void dram_callback(ramulator::Request& req, uint32_t id, uint32_t tag, uint64_t uuid) {
 		if (req.type == ramulator::Request::Type::WRITE)
 			return;
 		MemRsp mem_rsp{tag, (uint32_t)req.coreid, uuid};
-		simobject_->MemRspPort.push(mem_rsp, 1);
+		simobject_->MemRspPorts.at(id).push(mem_rsp, 1);
 		DT(3, simobject_->name() << "-" << mem_rsp);
+	}
+
+	uint32_t tick_helper(uint32_t i) {
+		if (simobject_->MemReqPorts.at(i).empty())
+			return 0;
+		
+		auto& mem_req = simobject_->MemReqPorts.at(i).front();
+
+		ramulator::Request dram_req( 
+			mem_req.addr,
+			mem_req.write ? ramulator::Request::Type::WRITE : ramulator::Request::Type::READ,
+			std::bind(&Impl::dram_callback, this, placeholders::_1, i, mem_req.tag, mem_req.uuid),
+			mem_req.cid
+		);
+
+		if (!dram_->send(dram_req))
+			return 0;
+
+		DT(3, simobject_->name() << "-" << mem_req);
+
+		simobject_->MemReqPorts.at(i).pop();
+		return 1;
 	}
 
 	void reset() {
@@ -78,6 +116,7 @@ public:
 	}
 
 	void tick() {
+		uint32_t counter = 0;
 		if (MEM_CYCLE_RATIO > 0) {
 			auto cycle = SimPlatform::instance().cycles();
 			if ((cycle % MEM_CYCLE_RATIO) == 0)
@@ -86,31 +125,15 @@ public:
 			for (int i = MEM_CYCLE_RATIO; i <= 0; ++i)
 				dram_->tick();
 		}
-					
-		if (simobject_->MemReqPort.empty())
-			return;
-		
-		auto& mem_req = simobject_->MemReqPort.front();
 
-		ramulator::Request dram_req( 
-			mem_req.addr,
-			mem_req.write ? ramulator::Request::Type::WRITE : ramulator::Request::Type::READ,
-			std::bind(&Impl::dram_callback, this, placeholders::_1, mem_req.tag, mem_req.uuid),
-			mem_req.cid
-		);
-
-		if (!dram_->send(dram_req))
-			return;
-		
-		if (mem_req.write) {
-			++perf_stats_.writes;
-		} else {
-			++perf_stats_.reads;
+		for (uint32_t i = 0; i < L3_NUM_BANKS; ++i)
+		{
+			counter += tick_helper(i);
 		}
-		
-		DT(3, simobject_->name() << "-" << mem_req);
-
-		simobject_->MemReqPort.pop();
+		perf_stats_.counter += counter;
+		if (counter > 0) {
+			++perf_stats_.ticks;
+		}
 	}
 };
 
@@ -118,8 +141,8 @@ public:
 
 MemSim::MemSim(const SimContext& ctx, const char* name, const Config& config) 
 	: SimObject<MemSim>(ctx, name)
-	, MemReqPort(this) 
-	, MemRspPort(this)
+	, MemReqPorts(L3_NUM_BANKS, this) 
+	, MemRspPorts(L3_NUM_BANKS, this)
 	, impl_(new Impl(this, config))
 {}
 
@@ -133,4 +156,8 @@ void MemSim::reset() {
 
 void MemSim::tick() {
   impl_->tick();
+}
+
+const MemSim::PerfStats &MemSim::perf_stats() const {
+	return impl_->perf_stats();
 }
