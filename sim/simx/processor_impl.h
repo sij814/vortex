@@ -18,6 +18,7 @@
 #include "dcrs.h"
 #include "cluster.h"
 #include "mem_sim.h"
+#include "mem_sim_ram2.h"
 
 namespace vortex {
 

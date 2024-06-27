@@ -1,0 +1,36 @@
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+  num_expected_insts: 500000
+
+  Translation:
+    impl: RandomTranslation
+    max_addr: 2147483648
+              
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM2
+    org:
+      preset: HBM2_2Gbps
+      channel: 8
+      rank: 1
+    timing:
+      preset: HBM2_2Gbps 
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: ClosedRowPolicy
+      cap: 4
+    plugins:
+
+  AddrMapper:
+    impl: RoBaRaCoCh
