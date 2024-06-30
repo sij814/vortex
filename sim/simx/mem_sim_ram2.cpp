@@ -15,7 +15,7 @@
 #include <vector>
 #include <queue>
 #include <stdlib.h>
-#include <yaml-cpp/yaml.h>
+//#include <yaml-cpp/yaml.h>
 
 DISABLE_WARNING_PUSH
 DISABLE_WARNING_UNUSED_PARAMETER
@@ -53,25 +53,25 @@ public:
 		ramulator2_frontend_ = Ramulator::Factory::create_frontend(yaml_config);
 		ramulator2_memorysystem_ = Ramulator::Factory::create_memory_system(yaml_config);
 
-		ramulator2_frontend->connect_memory_system(ramulator2_memorysystem_);
-		ramulator2_memorysystem->connect_frontend(ramulator2_frontend_);
-		Stats::statlist.output("ramulator.hbm.log");
+		ramulator2_frontend_->connect_memory_system(ramulator2_memorysystem_);
+		ramulator2_memorysystem_->connect_frontend(ramulator2_frontend_);
 	}
 
 	~Impl() {
-		dram_->finish();
-		Stats::statlist.printall();
-		delete dram_;
+		ramulator2_frontend_->finalize();
+        ramulator2_memorysystem_->finalize();
+		delete ramulator2_frontend_;
+		delete ramulator2_memorysystem_;
 	}
 
 	const PerfStats& perf_stats() const {
 		return perf_stats_;
 	}
 
-	void dram_callback(ramulator::Request& req, uint32_t id, uint32_t tag, uint64_t uuid) {
-		if (req.type == ramulator::Request::Type::WRITE)
+	void dram_callback(Ramulator::Request& req, uint32_t id, uint32_t tag, uint64_t uuid) {
+		if (req.type_id == Ramulator::Request::Type::Write)
 			return;
-		MemRsp mem_rsp{tag, (uint32_t)req.coreid, uuid};
+		MemRsp mem_rsp{tag, (uint32_t)req.source_id, uuid};
 		simobject_->MemRspPorts.at(id).push(mem_rsp, 1);
 		DT(3, simobject_->name() << "-" << mem_rsp);
 	}
@@ -82,14 +82,20 @@ public:
 		
 		auto& mem_req = simobject_->MemReqPorts.at(i).front();
 
-		ramulator::Request dram_req( 
+		/*
+		Ramulator::Request dram_req( 
 			mem_req.addr,
-			mem_req.write ? ramulator::Request::Type::WRITE : ramulator::Request::Type::READ,
-			std::bind(&Impl::dram_callback, this, placeholders::_1, i, mem_req.tag, mem_req.uuid),
-			mem_req.cid
+			mem_req.write ? Ramulator::Request::Type::Write : Ramulator::Request::Type::Read,
+			mem_req.cid,
+			std::bind(&Impl::dram_callback, this, placeholders::_1, i, mem_req.tag, mem_req.uuid)
 		);
+		*/
 
-		if (!dram_->send(dram_req))
+		if (!ramulator2_frontend_->
+				receive_external_requests(mem_req.write, mem_req.addr, 0, 
+				[this, i, mem_req](Ramulator::Request& req) {
+					dram_callback(req, i, mem_req.tag, mem_req.uuid);
+				}))
 			return 0;
 
 		DT(3, simobject_->name() << "-" << mem_req);
@@ -107,10 +113,10 @@ public:
 		if (MEM_CYCLE_RATIO > 0) {
 			auto cycle = SimPlatform::instance().cycles();
 			if ((cycle % MEM_CYCLE_RATIO) == 0)
-				dram_->tick();
+				ramulator2_memorysystem_->tick();
 		} else {
 			for (int i = MEM_CYCLE_RATIO; i <= 0; ++i)
-				dram_->tick();
+				ramulator2_memorysystem_->tick();
 		}
 
 		for (uint32_t i = 0; i < L3_NUM_BANKS; ++i)
