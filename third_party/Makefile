@@ -9,6 +9,8 @@ ramulator:
 	cd ramulator && git apply ../../miscs/patches/ramulator.patch 2> /dev/null; true
 	$(MAKE) -C ramulator libramulator.a
 
+	cd ramulator2 && git apply ../../miscs/patches/ramulator2.patch 2> /dev/null; true
+
 clean:
 	$(MAKE) -C softfloat/build/Linux-x86_64-GCC clean
 	$(MAKE) -C ramulator clean

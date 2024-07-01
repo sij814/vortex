@@ -8,18 +8,18 @@ CXXFLAGS += -std=c++20 -Wall -Wextra -Wfatal-errors
 CXXFLAGS += -fPIC -Wno-maybe-uninitialized
 CXXFLAGS += -I$(SRC_DIR) -I$(COMMON_DIR) -I$(ROOT_DIR)/hw
 CXXFLAGS += -I$(THIRD_PARTY_DIR)/softfloat/source/include
-#CXXFLAGS += -I$(THIRD_PARTY_DIR)/ramulator2/ext/spdlog/include
-#CXXFLAGS += -I$(THIRD_PARTY_DIR)/ramulator2/ext/yaml-cpp/include
+CXXFLAGS += -I$(THIRD_PARTY_DIR)/ramulator2/ext/spdlog/include
+CXXFLAGS += -I$(THIRD_PARTY_DIR)/ramulator2/ext/yaml-cpp/include
 CXXFLAGS += -I$(THIRD_PARTY_DIR)
 CXXFLAGS += -DXLEN_$(XLEN)
 CXXFLAGS += $(CONFIGS)
 
 LDFLAGS += $(THIRD_PARTY_DIR)/softfloat/build/Linux-x86_64-GCC/softfloat.a
-LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator -lramulator
-#LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator2 -lramulator2
+#LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator -lramulator
+LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator2 -lramulator
 
 SRCS = $(COMMON_DIR)/util.cpp $(COMMON_DIR)/mem.cpp $(COMMON_DIR)/rvfloats.cpp
-SRCS += $(SRC_DIR)/processor.cpp $(SRC_DIR)/cluster.cpp $(SRC_DIR)/socket.cpp $(SRC_DIR)/core.cpp $(SRC_DIR)/emulator.cpp $(SRC_DIR)/decode.cpp $(SRC_DIR)/execute.cpp $(SRC_DIR)/func_unit.cpp $(SRC_DIR)/cache_sim.cpp $(SRC_DIR)/mem_sim.cpp $(SRC_DIR)/local_mem.cpp $(SRC_DIR)/mem_coalescer.cpp $(SRC_DIR)/dcrs.cpp $(SRC_DIR)/types.cpp
+SRCS += $(SRC_DIR)/processor.cpp $(SRC_DIR)/cluster.cpp $(SRC_DIR)/socket.cpp $(SRC_DIR)/core.cpp $(SRC_DIR)/emulator.cpp $(SRC_DIR)/decode.cpp $(SRC_DIR)/execute.cpp $(SRC_DIR)/func_unit.cpp $(SRC_DIR)/cache_sim.cpp $(SRC_DIR)/mem_sim_ram2.cpp $(SRC_DIR)/local_mem.cpp $(SRC_DIR)/mem_coalescer.cpp $(SRC_DIR)/dcrs.cpp $(SRC_DIR)/types.cpp
 
 # Debugigng
 ifdef DEBUG

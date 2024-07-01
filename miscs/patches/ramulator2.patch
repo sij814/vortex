@@ -1,0 +1,30 @@
+diff --git a/src/frontend/frontend.h b/src/frontend/frontend.h
+index a1855bb..2609916 100644
+--- a/src/frontend/frontend.h
++++ b/src/frontend/frontend.h
+@@ -5,8 +5,8 @@
+ #include <string>
+ #include <functional>
+ 
+-#include "base/base.h"
+-#include "memory_system/memory_system.h"
++#include "../base/base.h"
++#include "../memory_system/memory_system.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/memory_system/memory_system.h b/src/memory_system/memory_system.h
+index beaf83c..2aa0152 100644
+--- a/src/memory_system/memory_system.h
++++ b/src/memory_system/memory_system.h
+@@ -6,8 +6,8 @@
+ #include <string>
+ #include <functional>
+ 
+-#include "base/base.h"
+-#include "frontend/frontend.h"
++#include "../base/base.h"
++#include "../frontend/frontend.h"
+ 
+ namespace Ramulator {
+ 

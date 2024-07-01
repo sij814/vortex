@@ -23,7 +23,7 @@ ProcessorImpl::ProcessorImpl(const Arch& arch)
   SimPlatform::instance().initialize();
 
   // create memory simulator
-  memsim_ = MemSim::Create("dram", MemSim::Config{
+  memsim_ = MemSim2::Create("dram", MemSim2::Config{
     MEMORY_BANKS,
     uint32_t(arch.num_cores()) * arch.num_clusters()
   });
