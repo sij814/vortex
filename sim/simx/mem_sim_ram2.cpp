@@ -47,7 +47,7 @@ public:
 		: simobject_(simobject)
 		, config_(config)
 	{
-		config_path_ = "../mem_config.yaml";
+		config_path_ = "../../../sim/mem_config.yaml";
 		YAML::Node yaml_config = Ramulator::Config::parse_config_file(config_path_, {});
 
 		ramulator2_frontend_ = Ramulator::Factory::create_frontend(yaml_config);
