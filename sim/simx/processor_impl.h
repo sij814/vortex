@@ -18,6 +18,7 @@
 #include "dcrs.h"
 #include "cluster.h"
 #include "mem_sim.h"
+#include "mem_sim_ram2.h"
 
 namespace vortex {
 
@@ -25,7 +26,7 @@ class ProcessorImpl {
 public:
   struct PerfStats {
     CacheSim::PerfStats l3cache;
-    MemSim::PerfStats memsim;
+    MemSim2::PerfStats memsim;
     uint64_t mem_reads;
     uint64_t mem_writes;
     uint64_t mem_latency;
@@ -50,7 +51,7 @@ private:
   std::vector<std::shared_ptr<Cluster>> clusters_;
   DCRS dcrs_;
   CacheSim::Ptr l3cache_;
-  MemSim::Ptr memsim_;
+  MemSim2::Ptr memsim_;
   uint64_t perf_mem_reads_;
   uint64_t perf_mem_writes_;
   uint64_t perf_mem_latency_;

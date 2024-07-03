@@ -1,5 +1,5 @@
 
-CXXFLAGS += -std=c++11 -Wall -Wextra -pedantic -Wfatal-errors
+CXXFLAGS += -std=c++20 -Wall -Wextra -pedantic -Wfatal-errors
 CXXFLAGS += -I$(VORTEX_RT_PATH)/common
 
 # Debugigng

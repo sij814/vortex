@@ -9,8 +9,8 @@ index ea340c8..d2aac5b 100644
 -CXX := clang++
 +#CXX := clang++
  # CXX := g++-5
--CXXFLAGS := -O3 -std=c++11 -g -Wall
-+CXXFLAGS := -std=c++11 -O3 -g -Wall -fPIC
+-CXXFLAGS := -O3 -std=c++17 -g -Wall
++CXXFLAGS := -std=c++17 -O3 -g -Wall -fPIC
  
  .PHONY: all clean depend
  
