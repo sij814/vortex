@@ -1,3 +1,207 @@
+diff --git a/src/base/base.h b/src/base/base.h
+index 1a7643a..083980e 100644
+--- a/src/base/base.h
++++ b/src/base/base.h
+@@ -11,16 +11,16 @@
+ #include <spdlog/spdlog.h>
+ #include <yaml-cpp/yaml.h>
+ 
+-#include "base/type.h"
+-#include "base/factory.h"
+-#include "base/clocked.h"
+-#include "base/param.h"
+-#include "base/exception.h"
+-#include "base/logging.h"
+-#include "base/debug.h"
+-#include "base/request.h"
+-#include "base/utils.h"
+-#include "base/stats.h"
++#include "type.h"
++#include "factory.h"
++#include "clocked.h"
++#include "param.h"
++#include "exception.h"
++#include "logging.h"
++#include "debug.h"
++#include "request.h"
++#include "utils.h"
++#include "stats.h"
+ 
+ 
+ #ifndef uint
+diff --git a/src/base/clocked.h b/src/base/clocked.h
+index bf7992f..39de5ff 100644
+--- a/src/base/clocked.h
++++ b/src/base/clocked.h
+@@ -4,7 +4,7 @@
+ #include <vector>
+ #include <string>
+ 
+-#include "base/type.h"
++#include "type.h"
+ 
+ namespace Ramulator {
+ 
+diff --git a/src/base/config.cpp b/src/base/config.cpp
+index ae21d1c..d429077 100644
+--- a/src/base/config.cpp
++++ b/src/base/config.cpp
+@@ -1,4 +1,4 @@
+-#include "base/config.h"
++#include "config.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/base/config.h b/src/base/config.h
+index 7ff53c2..56f2645 100644
+--- a/src/base/config.h
++++ b/src/base/config.h
+@@ -8,7 +8,7 @@
+ #include <spdlog/spdlog.h>
+ #include <yaml-cpp/yaml.h>
+ 
+-#include "base/base.h"
++#include "base.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/base/debug.h b/src/base/debug.h
+index 5b8a572..cbdf455 100644
+--- a/src/base/debug.h
++++ b/src/base/debug.h
+@@ -5,7 +5,7 @@
+ #include <string>
+ #include <type_traits>
+ 
+-#include "base/logging.h"
++#include "logging.h"
+ 
+ namespace Ramulator {
+ 
+diff --git a/src/base/factory.cpp b/src/base/factory.cpp
+index 2e3fe8b..9666909 100644
+--- a/src/base/factory.cpp
++++ b/src/base/factory.cpp
+@@ -1,7 +1,7 @@
+ #include <iostream>
+ #include <queue>
+ 
+-#include "base/factory.h"
++#include "factory.h"
+ #include "frontend/frontend.h"
+ #include "memory_system/memory_system.h"
+ 
+diff --git a/src/base/factory.h b/src/base/factory.h
+index 2ba013b..fb363b8 100644
+--- a/src/base/factory.h
++++ b/src/base/factory.h
+@@ -9,9 +9,9 @@
+ #include <spdlog/spdlog.h>
+ #include <yaml-cpp/yaml.h>
+ 
+-#include "base/type.h"
+-#include "base/logging.h"
+-#include "base/debug.h"
++#include "type.h"
++#include "logging.h"
++#include "debug.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/base/logging.cpp b/src/base/logging.cpp
+index 2f6c4d0..3379d92 100644
+--- a/src/base/logging.cpp
++++ b/src/base/logging.cpp
+@@ -1,4 +1,4 @@
+-#include "base/logging.h"
++#include "logging.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/base/logging.h b/src/base/logging.h
+index 436e445..426c72c 100644
+--- a/src/base/logging.h
++++ b/src/base/logging.h
+@@ -8,7 +8,7 @@
+ #include <vector>
+ #include <string>
+ 
+-#include "base/exception.h"
++#include "exception.h"
+ 
+ // TODO: Better Logging interface. Put logging methods into Implementation base class?
+ namespace Ramulator {
+diff --git a/src/base/param.h b/src/base/param.h
+index c626ee4..85e6639 100644
+--- a/src/base/param.h
++++ b/src/base/param.h
+@@ -10,7 +10,7 @@
+ #include <spdlog/spdlog.h>
+ #include <yaml-cpp/yaml.h>
+ 
+-#include "base/exception.h"
++#include "exception.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/base/request.cpp b/src/base/request.cpp
+index 5fe229e..1b34c6d 100644
+--- a/src/base/request.cpp
++++ b/src/base/request.cpp
+@@ -1,4 +1,4 @@
+-#include "base/request.h"
++#include "request.h"
+ 
+ namespace Ramulator {
+ 
+diff --git a/src/base/request.h b/src/base/request.h
+index 528831b..35993d8 100644
+--- a/src/base/request.h
++++ b/src/base/request.h
+@@ -5,7 +5,7 @@
+ #include <list>
+ #include <string>
+ 
+-#include "base/base.h"
++#include "base.h"
+ 
+ namespace Ramulator {
+ 
+diff --git a/src/base/stats.cpp b/src/base/stats.cpp
+index c1d8f86..0cba936 100644
+--- a/src/base/stats.cpp
++++ b/src/base/stats.cpp
+@@ -1,4 +1,4 @@
+-#include "base/stats.h"
++#include "stats.h"
+ 
+ namespace Ramulator {
+ 
+diff --git a/src/base/stats.h b/src/base/stats.h
+index 3b6afa6..c2c1dc9 100644
+--- a/src/base/stats.h
++++ b/src/base/stats.h
+@@ -8,8 +8,8 @@
+ #include <spdlog/spdlog.h>
+ #include <yaml-cpp/yaml.h>
+ 
+-#include "base/type.h"
+-#include "base/exception.h"
++#include "type.h"
++#include "exception.h"
+ 
+ 
+ namespace Ramulator {
+diff --git a/src/base/utils.cpp b/src/base/utils.cpp
+index a178fda..790f983 100644
+--- a/src/base/utils.cpp
++++ b/src/base/utils.cpp
+@@ -1,4 +1,4 @@
+-#include "base/utils.h"
++#include "utils.h"
+ 
+ #include <cstdint>
+ 
 diff --git a/src/frontend/frontend.h b/src/frontend/frontend.h
 index a1855bb..2609916 100644
 --- a/src/frontend/frontend.h

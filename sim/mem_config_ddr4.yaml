@@ -1,19 +1,19 @@
 Frontend:
   impl: GEM5
-  clock_ratio: 1    
+  clock_ratio: 1
 
 MemorySystem:
   impl: GenericDRAM
-  clock_ratio: 3
+  clock_ratio: 1
 
   DRAM:
-    impl: HBM2
+    impl: DDR4
     org:
-      preset: HBM2_2Gb
-      channel: 8
+      preset: DDR4_8Gb_x8
+      channel: 1
       rank: 2
     timing:
-      preset: HBM2_2Gbps
+      preset: DDR4_2400R
 
   Controller:
     impl: Generic
@@ -22,9 +22,9 @@ MemorySystem:
     RefreshManager:
       impl: AllBank
     RowPolicy:
-      impl: OpenRowPolicy
+      impl: ClosedRowPolicy
       cap: 1
     plugins:
 
   AddrMapper:
-    impl: ChRaBaRoCo
+    impl: RoBaRaCoCh

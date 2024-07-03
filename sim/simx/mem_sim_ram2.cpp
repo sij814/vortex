@@ -17,6 +17,9 @@
 #include <stdlib.h>
 //#include <yaml-cpp/yaml.h>
 
+#pragma push_macro("warn")
+#undef warn
+
 DISABLE_WARNING_PUSH
 DISABLE_WARNING_UNUSED_PARAMETER
 #define RAMULATOR
@@ -41,7 +44,6 @@ private:
 	std::string config_path_;
 	Ramulator::IFrontEnd* ramulator2_frontend_;
 	Ramulator::IMemorySystem* ramulator2_memorysystem_;
-
 public:
 	Impl(MemSim2 *simobject, const Config &config)
 		: simobject_(simobject)
