@@ -11,7 +11,7 @@ MemorySystem:
     org:
       preset: HBM2_2Gb
       channel: 8
-      rank: 2
+      rank: 1
     timing:
       preset: HBM2_2Gbps
 
@@ -27,4 +27,4 @@ MemorySystem:
     plugins:
 
   AddrMapper:
-    impl: ChRaBaRoCo
+    impl: MOP4CLXOR
