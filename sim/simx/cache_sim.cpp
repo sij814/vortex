@@ -346,11 +346,11 @@ public:
 			//printf("%s connecting\n", simobject_->name().c_str());
 			//3
 			if (config.B != 0) {
-				bypass_switch_ = MemSwitch::Create(sname, ArbiterType::Priority, max, max);
-				for (uint32_t i = 0; i < max; ++i) {
+				bypass_switch_ = MemSwitch::Create(sname, ArbiterType::Priority, max, (1 << config.B));
+				for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
 					//printf("%s connecting input=%d to MemPorts\n", simobject_->name().c_str(), i);
-					bypass_switch_->ReqOut.at(i).bind(&simobject->MemReqPorts.at(i % (1 << config.B)));
-					simobject->MemRspPorts.at(i % (1 << config.B)).bind(&bypass_switch_->RspOut.at(i));
+					bypass_switch_->ReqOut.at(i).bind(&simobject->MemReqPorts.at(i));
+					simobject->MemRspPorts.at(i).bind(&bypass_switch_->RspOut.at(i));
 				}
 			} else {
 				bypass_switch_ = MemSwitch::Create(sname, ArbiterType::Priority, 2);
@@ -361,7 +361,7 @@ public:
 			if (config.B != 0)
 			{
 				snprintf(sname, 100, "%s-bank-arb", simobject->name().c_str());
-				bank_switch_ = MemSwitch::Create(sname, ArbiterType::RoundRobin, (1 << config.B), (1 << config.B));
+				bank_switch_ = MemSwitch::Create(sname, ArbiterType::RoundRobin, max, max);
 				for (uint32_t i = 0, n = (1 << config.B); i < n; ++i)
 				{
 					//1
@@ -373,8 +373,8 @@ public:
 				if (config_.num_inputs > 1) {
 					for (uint32_t i = 0; i < max; ++i) {
 						//printf("%s connecting bank and bypass port=%d\n", simobject_->name().c_str(), i);
-						bank_switch_->ReqOut.at(i % (1 << config.B)).bind(&bypass_switch_->ReqIn.at(i));
-						bypass_switch_->RspIn.at(i).bind(&bank_switch_->RspOut.at(i % (1 << config.B)));
+						bank_switch_->ReqOut.at(i).bind(&bypass_switch_->ReqIn.at(i));
+						bypass_switch_->RspIn.at(i).bind(&bank_switch_->RspOut.at(i));
 					}
 				} else {
 					bank_switch_->ReqOut.at(0).bind(&bypass_switch_->ReqIn.at(0));
