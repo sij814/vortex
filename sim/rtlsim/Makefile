@@ -8,11 +8,14 @@ CXXFLAGS += -std=c++20 -Wall -Wextra -Wfatal-errors -Wno-array-bounds
 CXXFLAGS += -fPIC -Wno-maybe-uninitialized
 CXXFLAGS += -I$(ROOT_DIR)/hw -I$(COMMON_DIR)
 CXXFLAGS += -I$(THIRD_PARTY_DIR)/softfloat/source/include
+CXXFLAGS += -I$(THIRD_PARTY_DIR)/ramulator2/ext/spdlog/include
+CXXFLAGS += -I$(THIRD_PARTY_DIR)/ramulator2/ext/yaml-cpp/include
 CXXFLAGS += -I$(THIRD_PARTY_DIR)
 CXXFLAGS += -DXLEN_$(XLEN)
 
 LDFLAGS += $(THIRD_PARTY_DIR)/softfloat/build/Linux-x86_64-GCC/softfloat.a
-LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator -lramulator
+#LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator -lramulator
+LDFLAGS += -L$(THIRD_PARTY_DIR)/ramulator2 -lramulator
 
 # control RTL debug tracing states
 DBG_TRACE_FLAGS += -DDBG_TRACE_PIPELINE
@@ -35,7 +38,7 @@ RTL_INCLUDE = -I$(RTL_DIR) -I$(DPI_DIR) -I$(RTL_DIR)/libs -I$(RTL_DIR)/interface
 
 SRCS = $(COMMON_DIR)/util.cpp $(COMMON_DIR)/mem.cpp $(COMMON_DIR)/rvfloats.cpp
 SRCS += $(DPI_DIR)/util_dpi.cpp $(DPI_DIR)/float_dpi.cpp
-SRCS += $(SRC_DIR)/processor.cpp
+SRCS += $(SRC_DIR)/processor_ram2.cpp 
 
 ifdef AXI_BUS
 	TOP = Vortex_axi
