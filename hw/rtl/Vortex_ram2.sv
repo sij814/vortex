@@ -64,7 +64,7 @@ module Vortex_ram2 import VX_gpu_pkg::*; (
 
     `RESET_RELAY (l3_reset, reset);
 
-    VX_cache_wrap #(
+    VX_cache_wrap_l3 #(
         .INSTANCE_ID    ("l3cache"),
         .CACHE_SIZE     (`L3_CACHE_SIZE),
         .LINE_SIZE      (`L3_LINE_SIZE),
@@ -92,7 +92,7 @@ module Vortex_ram2 import VX_gpu_pkg::*; (
     `endif
 
         .core_bus_if    (per_cluster_mem_bus_if),
-        .mem_bus_if     (mem_bus_if[0])
+        .mem_bus_if     (mem_bus_if)
     );
 
     wire mem_req_fire[`L3_NUM_BANKS-1:0];
