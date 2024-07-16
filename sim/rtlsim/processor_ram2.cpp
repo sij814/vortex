@@ -19,8 +19,8 @@
 #include "VVortex_axi.h"
 #include "VVortex_axi__Syms.h"
 #else
-#include "VVortex.h"
-#include "VVortex__Syms.h"
+#include "VVortex_ram2.h"
+#include "VVortex_ram2__Syms.h"
 #endif
 
 #ifdef VCD_OUTPUT
@@ -123,7 +123,7 @@ public:
   #ifdef AXI_BUS
     device_ = new VVortex_axi();
   #else
-    device_ = new VVortex();
+    device_ = new VVortex_ram2();
   #endif
 
   #ifdef VCD_OUTPUT
@@ -479,121 +479,134 @@ private:
 #else
 
   void reset_avs_bus() {
-    device_->mem_req_ready = 0;
-    device_->mem_rsp_valid = 0;
+    for (int i = 0; i < L3_NUM_BANKS; ++i) {
+      device_->mem_req_ready[i] = 0;
+      device_->mem_rsp_valid[i] = 0;
+    }
   }
 
   void eval_avs_bus(bool clk) {
     if (!clk) {
-      mem_rd_rsp_ready_ = device_->mem_rsp_ready;
+      for (int i = 0; i < L3_NUM_BANKS; ++i) {
+        mem_rd_rsp_ready_ = device_->mem_rsp_ready[i];
+      }
       return;
     }
 
     if (ram_ == nullptr) {
-      device_->mem_req_ready = 0;
+      for (int i = 0; i < L3_NUM_BANKS; ++i) {
+        device_->mem_req_ready[i] = 0;
+      }
       return;
     }
 
     // process memory responses
-    if (mem_rd_rsp_active_
-    && device_->mem_rsp_valid && mem_rd_rsp_ready_) {
-      mem_rd_rsp_active_ = false;
+    for (int i = 0; i < L3_NUM_BANKS; ++i) {
+      if (mem_rd_rsp_active_
+      && device_->mem_rsp_valid[i] && mem_rd_rsp_ready_) {
+        mem_rd_rsp_active_ = false;
+      }
     }
-    if (!mem_rd_rsp_active_) {
-      if (!pending_mem_reqs_.empty()
-       && (*pending_mem_reqs_.begin())->ready) {
-        device_->mem_rsp_valid = 1;
-        auto mem_rsp_it = pending_mem_reqs_.begin();
-        auto mem_rsp = *mem_rsp_it;
-        /*
-          printf("%0ld: [sim] MEM Rd: bank=%d, tag=%0lx, addr=%0lx, data=", timestamp, last_mem_rsp_bank_, mem_rsp->tag, mem_rsp->addr);
-          for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
-            printf("%02x", mem_rsp->block[(MEM_BLOCK_SIZE-1)-i]);
-          }
-          printf("\n");
-        */
-        memcpy(device_->mem_rsp_data.data(), mem_rsp->block.data(), MEM_BLOCK_SIZE);
-        device_->mem_rsp_tag = mem_rsp->tag;
-        pending_mem_reqs_.erase(mem_rsp_it);
-        mem_rd_rsp_active_ = true;
-        delete mem_rsp;
-      } else {
-        device_->mem_rsp_valid = 0;
+
+    for (int i = 0; i < L3_NUM_BANKS; ++i) {
+      if (!mem_rd_rsp_active_) {
+        if (!pending_mem_reqs_.empty()
+        && (*pending_mem_reqs_.begin())->ready) {
+          device_->mem_rsp_valid[i] = 1;
+          auto mem_rsp_it = pending_mem_reqs_.begin();
+          auto mem_rsp = *mem_rsp_it;
+          /*
+            printf("%0ld: [sim] MEM Rd: bank=%d, tag=%0lx, addr=%0lx, data=", timestamp, last_mem_rsp_bank_, mem_rsp->tag, mem_rsp->addr);
+            for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
+              printf("%02x", mem_rsp->block[(MEM_BLOCK_SIZE-1)-i]);
+            }
+            printf("\n");
+          */
+          memcpy(device_->mem_rsp_data[i].data(), mem_rsp->block.data(), MEM_BLOCK_SIZE);
+          device_->mem_rsp_tag[i] = mem_rsp->tag;
+          pending_mem_reqs_.erase(mem_rsp_it);
+          mem_rd_rsp_active_ = true;
+          delete mem_rsp;
+        } else {
+          device_->mem_rsp_valid[i] = 0;
+        }
       }
     }
 
     // process memory requests
-    if (device_->mem_req_valid && running_) {
-      uint64_t byte_addr = (device_->mem_req_addr * MEM_BLOCK_SIZE);
-      if (device_->mem_req_rw) {
-        // process writes
-        uint64_t byteen = device_->mem_req_byteen;
-        uint8_t* data = (uint8_t*)(device_->mem_req_data.data());
+    for (int i = 0; i < L3_NUM_BANKS; ++i) {
+      if (device_->mem_req_valid[i] && running_) {
+        uint64_t byte_addr = (device_->mem_req_addr[i] * MEM_BLOCK_SIZE);
+        if (device_->mem_req_rw[i]) {
+          // process writes
+          uint64_t byteen = device_->mem_req_byteen[i];
+          uint8_t* data = (uint8_t*)(device_->mem_req_data[i].data());
 
-        // check console output
-        if (byte_addr >= uint64_t(IO_COUT_ADDR)
-         && byte_addr < (uint64_t(IO_COUT_ADDR) + IO_COUT_SIZE)) {
-          for (int i = 0; i < IO_COUT_SIZE; i++) {
-            if ((byteen >> i) & 0x1) {
-              auto& ss_buf = print_bufs_[i];
-              char c = data[i];
-              ss_buf << c;
-              if (c == '\n') {
-                std::cout << std::dec << "#" << i << ": " << ss_buf.str() << std::flush;
-                ss_buf.str("");
+          // check console output
+          if (byte_addr >= uint64_t(IO_COUT_ADDR)
+          && byte_addr < (uint64_t(IO_COUT_ADDR) + IO_COUT_SIZE)) {
+            for (int i = 0; i < IO_COUT_SIZE; i++) {
+              if ((byteen >> i) & 0x1) {
+                auto& ss_buf = print_bufs_[i];
+                char c = data[i];
+                ss_buf << c;
+                if (c == '\n') {
+                  std::cout << std::dec << "#" << i << ": " << ss_buf.str() << std::flush;
+                  ss_buf.str("");
+                }
               }
             }
+          } else {
+            /*
+              printf("%0ld: [sim] MEM Wr: tag=%0lx, addr=%0x, byteen=%0lx, data=", timestamp, device_->mem_req_tag, byte_addr, byteen);
+              for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
+                printf("%02x", data[(MEM_BLOCK_SIZE-1)-i]);
+              }
+              printf("\n");
+            */
+            for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
+              if ((byteen >> i) & 0x1) {
+                (*ram_)[byte_addr + i] = data[i];
+              }
+            }
+
+            auto tag = device_->mem_req_tag[i];
+
+            // send dram request
+            Ramulator::Request dram_req(
+              byte_addr,
+              Ramulator::Request::Type::Write,
+              0,
+              [this](Ramulator::Request& req) {}
+              );
+            dram_queue_.push(dram_req);
           }
         } else {
-          /*
-            printf("%0ld: [sim] MEM Wr: tag=%0lx, addr=%0x, byteen=%0lx, data=", timestamp, device_->mem_req_tag, byte_addr, byteen);
-            for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
-              printf("%02x", data[(MEM_BLOCK_SIZE-1)-i]);
-            }
-            printf("\n");
-          */
-          for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
-            if ((byteen >> i) & 0x1) {
-              (*ram_)[byte_addr + i] = data[i];
-            }
-          }
+          // process reads
+          auto mem_req = new mem_req_t();
+          mem_req->tag   = device_->mem_req_tag[i];
+          mem_req->addr  = byte_addr;
+          mem_req->write = false;
+          mem_req->ready = false;
+          ram_->read(mem_req->block.data(), byte_addr, MEM_BLOCK_SIZE);
+          pending_mem_reqs_.emplace_back(mem_req);
 
-          auto tag = device_->mem_req_tag;
+          //printf("%0ld: [sim] MEM Rd Req: addr=%0x, tag=%0lx\n", timestamp, byte_addr, device_->mem_req_tag);
 
           // send dram request
           Ramulator::Request dram_req(
             byte_addr,
-            Ramulator::Request::Type::Write,
+            Ramulator::Request::Type::Read,
             0,
-            [this](Ramulator::Request& req) {}
-            );
+            [this, mem_req](Ramulator::Request& req) {
+              mem_req->ready = true;
+            });
           dram_queue_.push(dram_req);
         }
-      } else {
-        // process reads
-        auto mem_req = new mem_req_t();
-        mem_req->tag   = device_->mem_req_tag;
-        mem_req->addr  = byte_addr;
-        mem_req->write = false;
-        mem_req->ready = false;
-        ram_->read(mem_req->block.data(), byte_addr, MEM_BLOCK_SIZE);
-        pending_mem_reqs_.emplace_back(mem_req);
-
-        //printf("%0ld: [sim] MEM Rd Req: addr=%0x, tag=%0lx\n", timestamp, byte_addr, device_->mem_req_tag);
-
-        // send dram request
-        Ramulator::Request dram_req(
-          byte_addr,
-          Ramulator::Request::Type::Read,
-          0,
-          [this, mem_req](Ramulator::Request& req) {
-            mem_req->ready = true;
-          });
-        dram_queue_.push(dram_req);
       }
-    }
 
-    device_->mem_req_ready = running_;
+      device_->mem_req_ready[i] = running_;
+    }
   }
 
 #endif
@@ -630,7 +643,7 @@ private:
 #ifdef AXI_BUS
   VVortex_axi *device_;
 #else
-  VVortex *device_;
+  VVortex_ram2 *device_;
 #endif
 #ifdef VCD_OUTPUT
   VerilatedVcdC *trace_;
