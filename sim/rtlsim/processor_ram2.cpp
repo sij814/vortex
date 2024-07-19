@@ -133,6 +133,12 @@ public:
     trace_->open("trace.vcd");
   #endif
 
+    mem_rd_rsp_active_.resize(L3_NUM_BANKS);
+    mem_rd_rsp_ready_.resize(L3_NUM_BANKS);
+
+    mem_wr_rsp_active_.resize(L3_NUM_BANKS);
+    mem_wr_rsp_ready_.resize(L3_NUM_BANKS);
+
     ram_ = nullptr;
 
     config_path_ = "../../../sim/mem_config.yaml";
@@ -234,8 +240,10 @@ private:
 
     pending_mem_reqs_.clear();
 
-    mem_rd_rsp_active_ = false;
-    mem_wr_rsp_active_ = false;
+    for (int i = 0; i < L3_NUM_BANKS; ++i) {
+      mem_rd_rsp_active_.at(i) = false;
+      mem_wr_rsp_active_.at(i) = false;
+    }
 
   #ifdef AXI_BUS
     this->reset_axi_bus();
@@ -488,7 +496,7 @@ private:
   void eval_avs_bus(bool clk) {
     if (!clk) {
       for (int i = 0; i < L3_NUM_BANKS; ++i) {
-        mem_rd_rsp_ready_ = device_->mem_rsp_ready[i];
+        mem_rd_rsp_ready_.at(i) = device_->mem_rsp_ready[i];
       }
       return;
     }
@@ -502,14 +510,14 @@ private:
 
     // process memory responses
     for (int i = 0; i < L3_NUM_BANKS; ++i) {
-      if (mem_rd_rsp_active_
-      && device_->mem_rsp_valid[i] && mem_rd_rsp_ready_) {
-        mem_rd_rsp_active_ = false;
+      if (mem_rd_rsp_active_.at(i)
+      && device_->mem_rsp_valid[i] && mem_rd_rsp_ready_.at(i)) {
+        mem_rd_rsp_active_.at(i) = false;
       }
     }
 
     for (int i = 0; i < L3_NUM_BANKS; ++i) {
-      if (!mem_rd_rsp_active_) {
+      if (!mem_rd_rsp_active_.at(i)) {
         if (!pending_mem_reqs_.empty()
         && (*pending_mem_reqs_.begin())->ready) {
           device_->mem_rsp_valid[i] = 1;
@@ -525,7 +533,7 @@ private:
           memcpy(device_->mem_rsp_data[i].data(), mem_rsp->block.data(), MEM_BLOCK_SIZE);
           device_->mem_rsp_tag[i] = mem_rsp->tag;
           pending_mem_reqs_.erase(mem_rsp_it);
-          mem_rd_rsp_active_ = true;
+          mem_rd_rsp_active_.at(i) = true;
           delete mem_rsp;
         } else {
           device_->mem_rsp_valid[i] = 0;
@@ -545,13 +553,13 @@ private:
           // check console output
           if (byte_addr >= uint64_t(IO_COUT_ADDR)
           && byte_addr < (uint64_t(IO_COUT_ADDR) + IO_COUT_SIZE)) {
-            for (int i = 0; i < IO_COUT_SIZE; i++) {
-              if ((byteen >> i) & 0x1) {
-                auto& ss_buf = print_bufs_[i];
-                char c = data[i];
+            for (int j = 0; j < IO_COUT_SIZE; j++) {
+              if ((byteen >> j) & 0x1) {
+                auto& ss_buf = print_bufs_[j];
+                char c = data[j];
                 ss_buf << c;
                 if (c == '\n') {
-                  std::cout << std::dec << "#" << i << ": " << ss_buf.str() << std::flush;
+                  std::cout << std::dec << "#" << j << ": " << ss_buf.str() << std::flush;
                   ss_buf.str("");
                 }
               }
@@ -564,9 +572,9 @@ private:
               }
               printf("\n");
             */
-            for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
-              if ((byteen >> i) & 0x1) {
-                (*ram_)[byte_addr + i] = data[i];
+            for (int j = 0; j < MEM_BLOCK_SIZE; j++) {
+              if ((byteen >> j) & 0x1) {
+                (*ram_)[byte_addr + j] = data[j];
               }
             }
 
@@ -576,7 +584,7 @@ private:
             Ramulator::Request dram_req(
               byte_addr,
               Ramulator::Request::Type::Write,
-              0,
+              i,
               [this](Ramulator::Request& req) {}
               );
             dram_queue_.push(dram_req);
@@ -597,7 +605,7 @@ private:
           Ramulator::Request dram_req(
             byte_addr,
             Ramulator::Request::Type::Read,
-            0,
+            i,
             [this, mem_req](Ramulator::Request& req) {
               mem_req->ready = true;
             });
@@ -653,11 +661,11 @@ private:
 
   std::list<mem_req_t*> pending_mem_reqs_;
 
-  bool mem_rd_rsp_active_;
-  bool mem_rd_rsp_ready_;
+  std::vector<bool> mem_rd_rsp_active_;
+  std::vector<bool> mem_rd_rsp_ready_;
 
-  bool mem_wr_rsp_active_;
-  bool mem_wr_rsp_ready_;
+  std::vector<bool> mem_wr_rsp_active_;
+  std::vector<bool> mem_wr_rsp_ready_;
 
   RAM *ram_;
 

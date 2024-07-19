@@ -244,7 +244,9 @@ module VX_cache_l3 import VX_gpu_pkg::*; #(
     if (NUM_BANKS == 1) begin
         assign mem_rsp_ready_s = per_bank_mem_rsp_ready;
     end else begin
-        assign mem_rsp_ready_s = per_bank_mem_rsp_ready[`CS_MEM_TAG_TO_BANK_ID(mem_rsp_tag_s)];
+        for (genvar i = 0; i < NUM_BANKS; ++i) begin
+            assign mem_rsp_ready_s[i] = per_bank_mem_rsp_ready[`CS_MEM_TAG_TO_BANK_ID(mem_rsp_tag_s[i])];
+        end
     end
 
     // Bank requests dispatch
@@ -330,7 +332,7 @@ module VX_cache_l3 import VX_gpu_pkg::*; #(
         if (NUM_BANKS == 1) begin
             assign curr_bank_mem_rsp_valid = mem_rsp_valid_s;
         end else begin
-            assign curr_bank_mem_rsp_valid = mem_rsp_valid_s && (`CS_MEM_TAG_TO_BANK_ID(mem_rsp_tag_s) == i);
+            assign curr_bank_mem_rsp_valid = mem_rsp_valid_s[i] && (`CS_MEM_TAG_TO_BANK_ID(mem_rsp_tag_s[i]) == i);
         end
 
         `RESET_RELAY (bank_reset, reset);
@@ -443,15 +445,15 @@ module VX_cache_l3 import VX_gpu_pkg::*; #(
 
     ///////////////////////////////////////////////////////////////////////////
 
-    wire                        mem_req_valid_p;
-    wire [`CS_MEM_ADDR_WIDTH-1:0] mem_req_addr_p;
-    wire                        mem_req_rw_p;
-    wire [WORD_SEL_WIDTH-1:0]   mem_req_wsel_p;
-    wire [WORD_SIZE-1:0]        mem_req_byteen_p;
-    wire [`CS_WORD_WIDTH-1:0]   mem_req_data_p;
-    wire [MEM_TAG_WIDTH-1:0]    mem_req_tag_p;
-    wire [MSHR_ADDR_WIDTH-1:0]  mem_req_id_p;
-    wire                        mem_req_ready_p;
+    wire [NUM_BANKS-1:0]                       mem_req_valid_p;
+    wire [NUM_BANKS-1:0][`CS_MEM_ADDR_WIDTH-1:0] mem_req_addr_p;
+    wire [NUM_BANKS-1:0]                       mem_req_rw_p;
+    wire [NUM_BANKS-1:0][WORD_SEL_WIDTH-1:0]   mem_req_wsel_p;
+    wire [NUM_BANKS-1:0][WORD_SIZE-1:0]        mem_req_byteen_p;
+    wire [NUM_BANKS-1:0][`CS_WORD_WIDTH-1:0]   mem_req_data_p;
+    wire [NUM_BANKS-1:0][MEM_TAG_WIDTH-1:0]    mem_req_tag_p;
+    wire [NUM_BANKS-1:0][MSHR_ADDR_WIDTH-1:0]  mem_req_id_p;
+    wire [NUM_BANKS-1:0]                       mem_req_ready_p;
 
     // Memory request arbitration
 
@@ -468,6 +470,7 @@ module VX_cache_l3 import VX_gpu_pkg::*; #(
 
     VX_stream_arb #(
         .NUM_INPUTS (NUM_BANKS),
+        .NUM_OUTPUTS (NUM_BANKS),
         .DATAW      (`CS_MEM_ADDR_WIDTH + 1  + WORD_SEL_WIDTH + WORD_SIZE + `CS_WORD_WIDTH + MSHR_ADDR_WIDTH),
         .ARBITER    ("R")
     ) mem_req_arb (
@@ -483,8 +486,10 @@ module VX_cache_l3 import VX_gpu_pkg::*; #(
     );
 
     if (NUM_BANKS > 1) begin
-        wire [`CS_BANK_SEL_BITS-1:0] mem_req_bank_id = `CS_MEM_ADDR_TO_BANK_ID(mem_req_addr_p);
-        assign mem_req_tag_p = MEM_TAG_WIDTH'({mem_req_bank_id, mem_req_id_p});            
+        for (genvar i = 0; i < NUM_BANKS; ++i) begin
+            wire [`CS_BANK_SEL_BITS-1:0] mem_req_bank_id = `CS_MEM_ADDR_TO_BANK_ID(mem_req_addr_p[i]);
+            assign mem_req_tag_p[i] = MEM_TAG_WIDTH'({mem_req_bank_id, mem_req_id_p[i]});            
+        end
     end else begin
         assign mem_req_tag_p = MEM_TAG_WIDTH'(mem_req_id_p);
     end   
