@@ -21,8 +21,8 @@ class CacheCluster : public SimObject<CacheCluster> {
 public:
 	std::vector<std::vector<SimPort<MemReq>>> CoreReqPorts;
 	std::vector<std::vector<SimPort<MemRsp>>> CoreRspPorts;
-	SimPort<MemReq> MemReqPort;
-	SimPort<MemRsp> MemRspPort;
+	std::vector<SimPort<MemReq>> MemReqPorts;
+	std::vector<SimPort<MemRsp>> MemRspPorts;
 
 	CacheCluster(const SimContext& ctx, 
 							const char* name, 
@@ -33,8 +33,8 @@ public:
 		: SimObject(ctx, name)
 		, CoreReqPorts(num_inputs, std::vector<SimPort<MemReq>>(num_requests, this))
 		, CoreRspPorts(num_inputs, std::vector<SimPort<MemRsp>>(num_requests, this))
-		, MemReqPort(this)
-		, MemRspPort(this)
+		, MemReqPorts(num_caches, this)
+		, MemRspPorts(num_caches, this)
 		, caches_(MAX(num_caches, 0x1)) {
 
 		CacheSim::Config cache_config2(cache_config);
@@ -45,6 +45,7 @@ public:
 
 		char sname[100];
 		
+		//std::cout << "HERE1" << std::endl;
 		std::vector<MemSwitch::Ptr> input_arbs(num_inputs);
 		for (uint32_t j = 0; j < num_inputs; ++j) {
 			snprintf(sname, 100, "%s-input-arb%d", name, j);
@@ -54,7 +55,7 @@ public:
 				input_arbs.at(j)->RspIn.at(i).bind(&this->CoreRspPorts.at(j).at(i));
 			}
 		}
-
+		//std::cout << "HERE2" << std::endl;
 		std::vector<MemSwitch::Ptr> mem_arbs(cache_config.num_inputs);
 		for (uint32_t i = 0; i < cache_config.num_inputs; ++i) {
 			snprintf(sname, 100, "%s-mem-arb%d", name, i);
@@ -64,9 +65,9 @@ public:
 				mem_arbs.at(i)->RspIn.at(j).bind(&input_arbs.at(j)->RspOut.at(i));
 			}
 		}
-
+		//std::cout << "HERE3" << std::endl;
 		snprintf(sname, 100, "%s-cache-arb", name);
-		auto cache_arb = MemSwitch::Create(sname, ArbiterType::RoundRobin, num_caches, 1);
+		auto cache_arb = MemSwitch::Create(sname, ArbiterType::RoundRobin, num_caches, num_caches);
 
 		for (uint32_t i = 0; i < num_caches; ++i) {
 			snprintf(sname, 100, "%s-cache%d", name, i);
@@ -80,9 +81,12 @@ public:
 			caches_.at(i)->MemReqPorts.at(0).bind(&cache_arb->ReqIn.at(i));
 			cache_arb->RspIn.at(i).bind(&caches_.at(i)->MemRspPorts.at(0));
 		}
-
-		cache_arb->ReqOut.at(0).bind(&this->MemReqPort);
-		this->MemRspPort.bind(&cache_arb->RspOut.at(0));
+		//std::cout << "HERE4" << std::endl;
+		for (uint32_t i = 0; i < num_caches; ++i) {
+			cache_arb->ReqOut.at(i).bind(&this->MemReqPorts.at(i));
+			this->MemRspPorts.at(i).bind(&cache_arb->RspOut.at(i));
+		}
+		//std::cout << "HERE5" << std::endl;
 	}
 
 	~CacheCluster() {}

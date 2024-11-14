@@ -32,8 +32,8 @@ public:
     CacheSim::PerfStats l2cache;
   };
 
-  SimPort<MemReq> mem_req_port;
-  SimPort<MemRsp> mem_rsp_port;
+  std::vector<SimPort<MemReq>> mem_req_ports;
+  std::vector<SimPort<MemRsp>> mem_rsp_ports;
 
   Cluster(const SimContext& ctx, 
           uint32_t cluster_id,

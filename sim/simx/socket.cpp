@@ -24,8 +24,8 @@ Socket::Socket(const SimContext& ctx,
   : SimObject(ctx, "socket")
   , icache_mem_req_port(this)
   , icache_mem_rsp_port(this)
-  , dcache_mem_req_port(this)
-  , dcache_mem_rsp_port(this)
+  , dcache_mem_req_ports(NUM_DCACHES, this) // TODO: change this to another value
+  , dcache_mem_rsp_ports(NUM_DCACHES, this)
   , socket_id_(socket_id)
   , cluster_(cluster)
   , cores_(arch.socket_size())
@@ -50,8 +50,8 @@ Socket::Socket(const SimContext& ctx,
     2,                      // pipeline latency
   });
 
-  icaches_->MemReqPort.bind(&icache_mem_req_port);
-  icache_mem_rsp_port.bind(&icaches_->MemRspPort);
+  icaches_->MemReqPorts.at(0).bind(&icache_mem_req_port);
+  icache_mem_rsp_port.bind(&icaches_->MemRspPorts.at(0));
 
   snprintf(sname, 100, "socket%d-dcaches", socket_id);
   dcaches_ = CacheCluster::Create(sname, cores_per_socket, NUM_DCACHES, DCACHE_NUM_REQS, CacheSim::Config{
@@ -70,8 +70,11 @@ Socket::Socket(const SimContext& ctx,
     2,                      // pipeline latency
   });
 
-  dcaches_->MemReqPort.bind(&dcache_mem_req_port);
-  dcache_mem_rsp_port.bind(&dcaches_->MemRspPort);
+  for (uint32_t i = 0; i < NUM_DCACHES; ++i) {
+    // TODO: add arbiter
+    dcaches_->MemReqPorts.at(i).bind(&dcache_mem_req_ports.at(i));
+    dcache_mem_rsp_ports.at(i).bind(&dcaches_->MemRspPorts.at(i));
+  }
 
   // create cores
 

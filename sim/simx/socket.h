@@ -35,8 +35,8 @@ public:
   SimPort<MemReq> icache_mem_req_port;
   SimPort<MemRsp> icache_mem_rsp_port;
 
-  SimPort<MemReq> dcache_mem_req_port;
-  SimPort<MemRsp> dcache_mem_rsp_port;
+  std::vector<SimPort<MemReq>> dcache_mem_req_ports;
+  std::vector<SimPort<MemRsp>> dcache_mem_rsp_ports;
 
   Socket(const SimContext& ctx, 
          uint32_t socket_id,

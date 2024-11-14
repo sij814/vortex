@@ -21,8 +21,8 @@ Cluster::Cluster(const SimContext& ctx,
                  const Arch &arch,
                  const DCRS &dcrs)
   : SimObject(ctx, "cluster")
-  , mem_req_port(this)
-  , mem_rsp_port(this)
+  , mem_req_ports(L2_NUM_BANKS, this)
+  , mem_rsp_ports(L2_NUM_BANKS, this)
   , cluster_id_(cluster_id)
   , processor_(processor)
   , sockets_(NUM_SOCKETS)
@@ -48,17 +48,19 @@ Cluster::Cluster(const SimContext& ctx,
                                  arch,
                                  dcrs);
 
+    // TODO: Create the arbitration for icache and dcache depending on the number of possible ports
     socket->icache_mem_req_port.bind(&icache_switch->ReqIn.at(i));
     icache_switch->RspIn.at(i).bind(&socket->icache_mem_rsp_port);
 
-    socket->dcache_mem_req_port.bind(&dcache_switch->ReqIn.at(i));
-    dcache_switch->RspIn.at(i).bind(&socket->dcache_mem_rsp_port);
-
+    // TODO: expand to more dcache memory ports
+    for (uint32_t j = 0; j < NUM_DCACHES; ++j) {
+      socket->dcache_mem_req_ports.at(j).bind(&dcache_switch->ReqIn.at(i));
+      dcache_switch->RspIn.at(i).bind(&socket->dcache_mem_rsp_ports.at(j));
+    }
     sockets_.at(i) = socket;
   }
 
   // Create l2cache
-
   snprintf(sname, 100, "cluster%d-l2cache", cluster_id);
   l2cache_ = CacheSim::Create(sname, CacheSim::Config{
     !L2_ENABLED,
@@ -75,10 +77,11 @@ Cluster::Cluster(const SimContext& ctx,
     L2_MSHR_SIZE,           // mshr size
     2,                      // pipeline latency
   });
-
-  l2cache_->MemReqPorts.at(0).bind(&this->mem_req_port);
-  this->mem_rsp_port.bind(&l2cache_->MemRspPorts.at(0));
-
+  for (uint32_t i = 0; i < L2_NUM_BANKS; ++i) {
+    // TODO: add arbiter
+    l2cache_->MemReqPorts.at(i).bind(&this->mem_req_ports.at(i));
+    this->mem_rsp_ports.at(i).bind(&l2cache_->MemRspPorts.at(i));
+  }
   icache_switch->ReqOut.at(0).bind(&l2cache_->CoreReqPorts.at(0));
   l2cache_->CoreRspPorts.at(0).bind(&icache_switch->RspOut.at(0));
 
