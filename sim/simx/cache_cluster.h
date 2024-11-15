@@ -45,7 +45,7 @@ public:
 
 		char sname[100];
 		
-		//std::cout << "HERE1" << std::endl;
+		//\std::cout << "HERE1" << std::endl;
 		std::vector<MemSwitch::Ptr> input_arbs(num_inputs);
 		for (uint32_t j = 0; j < num_inputs; ++j) {
 			snprintf(sname, 100, "%s-input-arb%d", name, j);

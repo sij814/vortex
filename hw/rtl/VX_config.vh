@@ -639,7 +639,7 @@
 
 // Number of Banks
 `ifndef L2_NUM_BANKS
-`define L2_NUM_BANKS `MIN(8 / `NUM_CLUSTERS, `NUM_SOCKETS)
+`define L2_NUM_BANKS `MIN(8, `NUM_SOCKETS)
 `endif
 
 // Core Response Queue Size

@@ -53,11 +53,10 @@ ProcessorImpl::ProcessorImpl(const Arch& arch)
   }
 
   // create clusters
-  // MemSwitch::Ptr bank_switch_ = MemSwitch::Create("l3", ArbiterType::RoundRobin, arch.num_clusters());
+  //MemSwitch::Ptr bank_switch_ = MemSwitch::Create("l3", ArbiterType::RoundRobin, arch.num_clusters());
   for (uint32_t i = 0; i < arch.num_clusters(); ++i) {
     clusters_.at(i) = Cluster::Create(i, this, arch, dcrs_);
 
-    // connect L3 core ports
     for (uint32_t j = 0; j < L2_NUM_BANKS; ++j) {
       clusters_.at(i)->mem_req_ports.at(j).bind(&l3cache_->CoreReqPorts.at(i * L2_NUM_BANKS + j));
       l3cache_->CoreRspPorts.at(i * L2_NUM_BANKS + j).bind(&clusters_.at(i)->mem_rsp_ports.at(j));

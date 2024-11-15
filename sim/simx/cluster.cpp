@@ -71,7 +71,7 @@ Cluster::Cluster(const SimContext& ctx,
     log2ceil(L2_NUM_BANKS), // B
     XLEN,                   // address bits
     1,                      // number of ports
-    2,                      // request size
+    MAX(2, L2_NUM_BANKS),   // request size
     L2_WRITEBACK,           // write-back
     false,                  // write response
     L2_MSHR_SIZE,           // mshr size
