@@ -21,8 +21,8 @@ Cluster::Cluster(const SimContext& ctx,
                  const Arch &arch,
                  const DCRS &dcrs)
   : SimObject(ctx, "cluster")
-  , mem_req_ports(L2_NUM_BANKS, this)
-  , mem_rsp_ports(L2_NUM_BANKS, this)
+  , mem_req_ports(L2_NUM_MEM_PORTS, this)
+  , mem_rsp_ports(L2_NUM_MEM_PORTS, this)
   , cluster_id_(cluster_id)
   , processor_(processor)
   , sockets_(NUM_SOCKETS)
@@ -41,6 +41,9 @@ Cluster::Cluster(const SimContext& ctx,
   snprintf(sname, 100, "cluster%d-dcache-arb", cluster_id);
   auto dcache_switch = MemSwitch::Create(sname, ArbiterType::RoundRobin, sockets_per_cluster);
 
+  snprintf(sname, 100, "cluster%d-dcache-arb", cluster_id);
+  auto l2_switch = MemSwitch::Create(sname, ArbiterType::RoundRobin, L2_NUM_MEM_PORTS, L2_NUM_MEM_PORTS);
+
   for (uint32_t i = 0; i < sockets_per_cluster; ++i) {
     uint32_t socket_id = cluster_id * sockets_per_cluster + i;
     auto socket = Socket::Create(socket_id,
@@ -49,14 +52,14 @@ Cluster::Cluster(const SimContext& ctx,
                                  dcrs);
 
     // TODO: Create the arbitration for icache and dcache depending on the number of possible ports
-    socket->icache_mem_req_port.bind(&icache_switch->ReqIn.at(i));
-    icache_switch->RspIn.at(i).bind(&socket->icache_mem_rsp_port);
+    socket->l1_mem_req_ports.at(0).bind(&icache_switch->ReqIn.at(i));
+    icache_switch->RspIn.at(i).bind(&socket->l1_mem_rsp_ports.at(0));
 
     // TODO: expand to more dcache memory ports
-    for (uint32_t j = 0; j < NUM_DCACHES; ++j) {
-      socket->dcache_mem_req_ports.at(j).bind(&dcache_switch->ReqIn.at(i));
-      dcache_switch->RspIn.at(i).bind(&socket->dcache_mem_rsp_ports.at(j));
-    }
+    //for (uint32_t j = 0; j < DCACHE_NUM_BANKS; ++j) {
+      socket->l1_mem_req_ports.at(1).bind(&dcache_switch->ReqIn.at(i));
+      dcache_switch->RspIn.at(i).bind(&socket->l1_mem_rsp_ports.at(1));
+    //}
     sockets_.at(i) = socket;
   }
 
@@ -72,15 +75,22 @@ Cluster::Cluster(const SimContext& ctx,
     XLEN,                   // address bits
     1,                      // number of ports
     MAX(2, L2_NUM_BANKS),   // request size
+    L2_NUM_MEM_PORTS,       // output size
     L2_WRITEBACK,           // write-back
     false,                  // write response
     L2_MSHR_SIZE,           // mshr size
     2,                      // pipeline latency
   });
-  for (uint32_t i = 0; i < L2_NUM_BANKS; ++i) {
+  for (uint32_t i = 0; i < L2_NUM_MEM_PORTS; ++i) {
     // TODO: add arbiter
     l2cache_->MemReqPorts.at(i).bind(&this->mem_req_ports.at(i));
     this->mem_rsp_ports.at(i).bind(&l2cache_->MemRspPorts.at(i));
+  }
+
+  // TODO: Arbiter here, make sure the switches are configured correctly
+  // overlap algorithm here
+  for (uint32_t i = 0; i < L2_NUM_BANKS; ++i) {
+    // placeholder
   }
   icache_switch->ReqOut.at(0).bind(&l2cache_->CoreReqPorts.at(0));
   l2cache_->CoreRspPorts.at(0).bind(&icache_switch->RspOut.at(0));

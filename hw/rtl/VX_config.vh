@@ -722,9 +722,19 @@
 `define MEMORY_BANKS 8
 `endif
 
-// Number of Memory Ports from LLC
-`ifndef NUM_MEM_PORTS
-`define NUM_MEM_PORTS `MIN(`MEMORY_BANKS, `L3_NUM_BANKS)
+// Number of Memory Ports for L1
+`ifndef L1_NUM_MEM_PORTS
+`define L1_NUM_MEM_PORTS `MAX(`MIN(`L2_NUM_MEM_PORTS / `NUM_SOCKETS, `DCACHE_NUM_BANKS), 2)
+`endif
+
+// Number of Memory Ports for L2
+`ifndef L2_NUM_MEM_PORTS
+`define L2_NUM_MEM_PORTS `MIN(`L3_NUM_MEM_PORTS / `NUM_CLUSTERS, `L2_NUM_BANKS)
+`endif
+
+// Number of Memory Ports for L3
+`ifndef L3_NUM_MEM_PORTS
+`define L3_NUM_MEM_PORTS `MIN(`MEMORY_BANKS, `L3_NUM_BANKS)
 `endif
 
 // ISA Extensions /////////////////////////////////////////////////////////////

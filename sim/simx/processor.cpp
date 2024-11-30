@@ -38,7 +38,8 @@ ProcessorImpl::ProcessorImpl(const Arch& arch)
     log2ceil(L3_NUM_BANKS),   // B
     XLEN,                     // address bits
     1,                        // number of ports
-    uint8_t(arch.num_clusters() * L2_NUM_BANKS), // request size
+    uint8_t(arch.num_clusters() * L2_NUM_MEM_PORTS), // request size
+    L3_NUM_MEM_PORTS,         // number of outputs
     L3_WRITEBACK,             // write-back
     false,                    // write response
     L3_MSHR_SIZE,             // mshr size
@@ -47,7 +48,7 @@ ProcessorImpl::ProcessorImpl(const Arch& arch)
   );
 
   // connect L3 memory ports
-  for (uint32_t i = 0; i < NUM_MEM_PORTS; ++i) {
+  for (uint32_t i = 0; i < L3_NUM_MEM_PORTS; ++i) {
     l3cache_->MemReqPorts.at(i).bind(&memsim_->MemReqPorts.at(i));
     memsim_->MemRspPorts.at(i).bind(&l3cache_->MemRspPorts.at(i));
   }
@@ -57,14 +58,14 @@ ProcessorImpl::ProcessorImpl(const Arch& arch)
   for (uint32_t i = 0; i < arch.num_clusters(); ++i) {
     clusters_.at(i) = Cluster::Create(i, this, arch, dcrs_);
 
-    for (uint32_t j = 0; j < L2_NUM_BANKS; ++j) {
-      clusters_.at(i)->mem_req_ports.at(j).bind(&l3cache_->CoreReqPorts.at(i * L2_NUM_BANKS + j));
-      l3cache_->CoreRspPorts.at(i * L2_NUM_BANKS + j).bind(&clusters_.at(i)->mem_rsp_ports.at(j));
+    for (uint32_t j = 0; j < L2_NUM_MEM_PORTS; ++j) {
+      clusters_.at(i)->mem_req_ports.at(j).bind(&l3cache_->CoreReqPorts.at(i * L2_NUM_MEM_PORTS + j));
+      l3cache_->CoreRspPorts.at(i * L2_NUM_MEM_PORTS + j).bind(&clusters_.at(i)->mem_rsp_ports.at(j));
     }
   }
 
   // set up memory profiling
-  for (uint32_t i = 0; i < NUM_MEM_PORTS; ++i) {
+  for (uint32_t i = 0; i < L3_NUM_MEM_PORTS; ++i) {
     memsim_->MemReqPorts.at(i).tx_callback([&](const MemReq& req, uint64_t cycle){
       __unused (cycle);
       perf_mem_reads_   += !req.write;

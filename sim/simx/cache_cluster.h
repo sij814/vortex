@@ -33,8 +33,8 @@ public:
 		: SimObject(ctx, name)
 		, CoreReqPorts(num_inputs, std::vector<SimPort<MemReq>>(num_requests, this))
 		, CoreRspPorts(num_inputs, std::vector<SimPort<MemRsp>>(num_requests, this))
-		, MemReqPorts(num_caches, this)
-		, MemRspPorts(num_caches, this)
+		, MemReqPorts((1 << cache_config.B), this)
+		, MemRspPorts((1 << cache_config.B), this)
 		, caches_(MAX(num_caches, 0x1)) {
 
 		CacheSim::Config cache_config2(cache_config);
@@ -45,7 +45,7 @@ public:
 
 		char sname[100];
 		
-		//\std::cout << "HERE1" << std::endl;
+		//std::cout << "HERE1" << std::endl;
 		std::vector<MemSwitch::Ptr> input_arbs(num_inputs);
 		for (uint32_t j = 0; j < num_inputs; ++j) {
 			snprintf(sname, 100, "%s-input-arb%d", name, j);

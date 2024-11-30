@@ -38,6 +38,9 @@ public:
   std::vector<SimPort<MemReq>> dcache_mem_req_ports;
   std::vector<SimPort<MemRsp>> dcache_mem_rsp_ports;
 
+  std::vector<SimPort<MemReq>> l1_mem_req_ports;
+  std::vector<SimPort<MemRsp>> l1_mem_rsp_ports;
+
   Socket(const SimContext& ctx, 
          uint32_t socket_id,
          Cluster* cluster, 
