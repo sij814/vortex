@@ -740,7 +740,6 @@ public:
       &switches.at(num_stages - 1).at(swtch)->Outputs.at(port).bind(&Outputs.at(o));
     }
 
-    // send requests through
     // process incoming requests
     for (uint32_t o = 0; o < O; ++o) {
       int32_t input_idx = -1;
@@ -1076,6 +1075,212 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////
 
+template <typename Req, typename Rsp>
+class TxOmega : public SimObject<TxOmega<Req, Rsp>> {
+public:
+  std::vector<SimPort<Req>> ReqIn;
+  std::vector<SimPort<Rsp>> RspIn;
+
+  std::vector<SimPort<Req>> ReqOut;
+  std::vector<SimPort<Rsp>> RspOut;
+
+  TxOmega(
+    const SimContext& ctx,
+    const char* name,
+    ArbiterType type,
+    uint32_t num_inputs,
+    uint32_t num_outputs = 1,
+    uint32_t radix = 1,
+    uint32_t addr_start = 0,
+    uint32_t delay = 1
+  )
+    : SimObject<TxOmega<Req, Rsp>>(ctx, name)
+    , ReqIn(num_inputs, this)
+    , RspIn(num_inputs, this)
+    , ReqOut(num_outputs, this)
+    , RspOut(num_outputs, this)
+    , type_(type)
+    , delay_(delay)
+    , radix_(radix)
+    , req_grants_(num_outputs, 0)
+    , rsp_grants_(num_inputs, 0)
+    , lg2_inputs_(log2ceil(num_inputs))
+    , lg2_outputs_(log2ceil(num_outputs))
+    , addr_start_(addr_start)
+    , collisions_(0) {
+    assert(delay != 0);
+    assert(num_inputs <= 64);
+    assert(num_outputs <= 64);
+    assert(ispow2(num_outputs));
+    assert(ispow2(radix));
+  }
+
+  void reset() {
+    for (auto& grant : req_grants_) {
+      grant = 0;
+    }
+    for (auto& grant : rsp_grants_) {
+      grant = 0;
+    }
+  }
+
+  void tick() {
+    uint32_t radix_lg = log2ceil(radix_);
+    uint32_t I = ReqIn.size();
+    uint32_t O = ReqOut.size();
+    uint32_t R = 1 << lg2_inputs_;
+    uint32_t T = 1 << lg2_outputs_;
+    uint32_t num_stages = R / radix_lg;
+    uint32_t num_switches = I / radix_;
+
+    // create a vector of switches for each stage
+    std::vector<std::vector<TxCrossBar<Req, Rsp>>> switches(num_stages, std::vector<TxCrossBar<Req, Rsp>>(num_switches, this));
+
+    for (uint32_t stage = 0; stage < num_stages; ++stage) {
+      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+        switches.at(stage).at(swtch) = TxCrossBar<Req, Rsp>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
+      }
+    }
+
+    // connect input switches
+    for (uint32_t i = 0; i < I; ++i) {
+      uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
+      uint32_t swtch = left_rotate / num_stages;
+      uint32_t port = left_rotate % radix_;
+      ReqIn.at(i).bind(&switches.at(0).at(swtch)->ReqIn.at(port));
+      RspOut.at(i).bind(&switches.at(0).at(swtch)->RspOut.at(port));
+    }
+
+    // connect internal switches
+    for (uint32_t stage = 0; stage < num_stages-1; ++stage) {
+      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+        for (uint32_t port = 0; port < radix_; ++port) {
+          uint32_t i = swtch * radix_ + port;
+          uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
+          uint32_t new_swtch = left_rotate / num_stages;
+          uint32_t new_port = left_rotate % radix_;
+          switches.at(stage).at(swtch)->ReqOut.at(port).bind(&switches.at(stage+1).at(new_swtch)->ReqIn.at(new_port));
+          switches.at(stage).at(swtch)->RspIn.at(port).bind(&switches.at(stage+1).at(new_swtch)->RspOut.at(new_port));
+        }
+      }
+    }
+
+    // connect output switches
+    for (uint32_t o = 0; o < I; ++o) {
+      uint32_t swtch = o / num_stages;
+      uint32_t port = o % radix_;
+      &switches.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
+      &switches.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(o));
+    }
+
+    // process outgoing responses
+    for (uint32_t i = 0; i < I; ++i) {
+      int32_t output_idx = -1;
+      for (uint32_t t = 0; t < T; ++t) {
+        uint32_t o = (rsp_grants_.at(i) + t) & (T-1);
+        if (o >= O)
+          continue;
+        auto& rsp_out = RspOut.at(o);
+        if (!rsp_out.empty()) {
+          auto& rsp = rsp_out.front();
+          // skip if response is not going to current input
+          uint32_t input_idx = 0;
+          if (lg2_inputs_ != 0) {
+            input_idx = rsp.tag & (R-1);
+          }
+          if (input_idx != i)
+            continue;
+          if (output_idx != -1) {
+            ++collisions_;
+            continue;
+          }
+          output_idx = o;
+        }
+      }
+      if (output_idx != -1) {
+        auto& rsp_out = RspOut.at(output_idx);
+        auto& rsp = rsp_out.front();
+        uint32_t input_idx = 0;
+        if (lg2_inputs_ != 0) {
+          input_idx = rsp.tag & (R-1);
+          rsp.tag >>= lg2_inputs_;
+        }
+        DT(4, this->name() << "-rsp" << output_idx << ": " << rsp);
+        RspIn.at(input_idx).push(rsp, 1);
+        rsp_out.pop();
+        this->update_rsp_grant(i, output_idx);
+      }
+    }
+
+    // process incoming requests
+    for (uint32_t o = 0; o < O; ++o) {
+      int32_t input_idx = -1;
+      for (uint32_t r = 0; r < R; ++r) {
+        uint32_t i = (req_grants_.at(o) + r) & (R-1);
+        if (i >= I)
+          continue;
+        auto& req_in = ReqIn.at(i);
+        if (!req_in.empty()) {
+          auto& req = req_in.front();
+          // skip if request is not going to current output
+          uint32_t output_idx = 0;
+          if (O != 1) {
+            output_idx = (uint32_t)bit_getw(req.addr, addr_start_, lg2_outputs_-1);
+          }
+          if (output_idx != o)
+            continue;
+          if (input_idx != -1) {
+            ++collisions_;
+            continue;
+          }
+          input_idx = i;
+        }
+      }
+      if (input_idx != -1) {
+        auto& req_in = ReqIn.at(input_idx);
+        auto& req = req_in.front();
+        if (lg2_inputs_ != 0) {
+          req.tag = (req.tag << lg2_inputs_) | input_idx;
+        }
+        DT(4, this->name() << "-req" << input_idx << ": " << req);
+        ReqOut.at(o).push(req, delay_);
+        req_in.pop();
+        this->update_req_grant(o, input_idx);
+      }
+    }
+  }
+
+  uint64_t collisions() const {
+    return collisions_;
+  }
+
+protected:
+
+  void update_req_grant(uint32_t index, uint32_t grant) {
+    if (type_ == ArbiterType::RoundRobin) {
+      req_grants_.at(index) = grant + 1;
+    }
+  }
+
+  void update_rsp_grant(uint32_t index, uint32_t grant) {
+    if (type_ == ArbiterType::RoundRobin) {
+      rsp_grants_.at(index) = grant + 1;
+    }
+  }
+
+  ArbiterType type_;
+  uint32_t delay_;
+  uint32_t radix_;
+  std::vector<uint32_t> req_grants_;
+  std::vector<uint32_t> rsp_grants_;
+  uint32_t lg2_inputs_;
+  uint32_t lg2_outputs_;
+  uint32_t addr_start_;
+  uint64_t collisions_;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
 class LocalMemSwitch : public SimObject<LocalMemSwitch> {
 public:
   SimPort<LsuReq> ReqIn;
@@ -1128,5 +1333,6 @@ private:
 
 using MemArbiter = TxArbiter<MemReq, MemRsp>;
 using MemCrossBar = TxCrossBar<MemReq, MemRsp>;
+using MemOmega = TxOmega<MemReq, MemRsp>;
 
 }
