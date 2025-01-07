@@ -357,6 +357,7 @@ public:
 		// Create bank's memory arbiter
 		snprintf(sname, 100, "%s-bank-arb", simobject->name().c_str());
 		auto bank_mem_arb = MemArbiter::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports);
+		auto bank_mem_arb_omega = MemOmega::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports, 2);
 		for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
 			mem_req_ports_.at(i).bind(&bank_mem_arb->ReqIn.at(i));
 			bank_mem_arb->RspIn.at(i).bind(&mem_rsp_ports_.at(i));

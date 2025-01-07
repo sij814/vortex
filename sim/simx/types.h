@@ -1134,11 +1134,11 @@ public:
     uint32_t num_switches = I / radix_;
 
     // create a vector of switches for each stage
-    std::vector<std::vector<TxCrossBar<Req, Rsp>>> switches(num_stages, std::vector<TxCrossBar<Req, Rsp>>(num_switches, this));
+    std::vector<std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>> switches(num_stages, std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>(num_switches));
 
     for (uint32_t stage = 0; stage < num_stages; ++stage) {
       for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
-        switches.at(stage).at(swtch) = TxCrossBar<Req, Rsp>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
+        switches.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
       }
     }
 
@@ -1169,8 +1169,8 @@ public:
     for (uint32_t o = 0; o < I; ++o) {
       uint32_t swtch = o / num_stages;
       uint32_t port = o % radix_;
-      &switches.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
-      &switches.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(o));
+      switches.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
+      switches.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(o));
     }
 
     // process outgoing responses
