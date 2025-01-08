@@ -680,6 +680,7 @@ public:
     , grants_(num_outputs, 0)
     , lg2_inputs_(log2ceil(num_inputs))
     , lg2_outputs_(log2ceil(num_outputs))
+    , switches_((1 << lg2_inputs_ / log2ceil(radix_)), std::vector<CrossBar<Type>>(Inputs.size() / radix_))
     , addr_start_(addr_start)
     , collisions_(0) {
     assert(delay != 0);
@@ -687,6 +688,14 @@ public:
     assert(num_outputs <= 64);
     assert(ispow2(num_outputs));
     assert(ispow2(radix));
+
+    uint32_t num_stages = 1 << lg2_inputs_ / log2ceil(radix_);
+    uint32_t num_switches = Inputs.size() / radix_;
+    for (uint32_t stage = 0; stage < num_stages; ++stage) {
+      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+        switches_.at(stage).at(swtch) = CrossBar<Type>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
+      }
+    }
   }
 
   void reset() {
@@ -703,21 +712,12 @@ public:
     uint32_t num_stages = R / radix_lg;
     uint32_t num_switches = I / radix_;
 
-    // create a vector of switches for each stage
-    std::vector<std::vector<CrossBar<Type>>> switches(num_stages, std::vector<CrossBar<Type>>(num_switches, this));
-
-    for (uint32_t stage = 0; stage < num_stages; ++stage) {
-      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
-        switches.at(stage).at(swtch) = CrossBar<Type>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
-      }
-    }
-
     // connect input switches
     for (uint32_t i = 0; i < I; ++i) {
       uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
       uint32_t swtch = left_rotate / num_stages;
       uint32_t port = left_rotate % radix_;
-      Inputs.at(i).bind(&switches.at(0).at(swtch)->Inputs.at(port));
+      Inputs.at(i).bind(&switches_.at(0).at(swtch)->Inputs.at(port));
     }
 
     // connect internal switches
@@ -728,7 +728,7 @@ public:
           uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
           uint32_t new_swtch = left_rotate / num_stages;
           uint32_t new_port = left_rotate % radix_;
-          switches.at(stage).at(swtch)->Outputs.at(port).bind(&switches.at(stage+1).at(new_swtch)->Inputs.at(new_port));
+          switches_.at(stage).at(swtch)->Outputs.at(port).bind(&switches_.at(stage+1).at(new_swtch)->Inputs.at(new_port));
         }
       }
     }
@@ -737,7 +737,7 @@ public:
     for (uint32_t o = 0; o < I; ++o) {
       uint32_t swtch = o / num_stages;
       uint32_t port = o % radix_;
-      &switches.at(num_stages - 1).at(swtch)->Outputs.at(port).bind(&Outputs.at(o));
+      &switches_.at(num_stages - 1).at(swtch)->Outputs.at(port).bind(&Outputs.at(o));
     }
 
     // process incoming requests
@@ -796,6 +796,7 @@ protected:
   std::vector<uint32_t> grants_;
   uint32_t lg2_inputs_;
   uint32_t lg2_outputs_;
+  std::vector<std::vector<CrossBar<Type>>> switches_;
   uint32_t addr_start_;
   uint64_t collisions_;
 };
@@ -1106,6 +1107,7 @@ public:
     , rsp_grants_(num_inputs, 0)
     , lg2_inputs_(log2ceil(num_inputs))
     , lg2_outputs_(log2ceil(num_outputs))
+    , switches_((1 << lg2_inputs_ / log2ceil(radix_)), std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>(ReqIn.size() / radix_))
     , addr_start_(addr_start)
     , collisions_(0) {
     assert(delay != 0);
@@ -1113,6 +1115,14 @@ public:
     assert(num_outputs <= 64);
     assert(ispow2(num_outputs));
     assert(ispow2(radix));
+
+    uint32_t num_stages = 1 << lg2_inputs_ / log2ceil(radix_);
+    uint32_t num_switches = ReqIn.size() / radix_;
+    for (uint32_t stage = 0; stage < num_stages; ++stage) {
+      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+        switches_.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
+      }
+    }
   }
 
   void reset() {
@@ -1133,22 +1143,13 @@ public:
     uint32_t num_stages = R / radix_lg;
     uint32_t num_switches = I / radix_;
 
-    // create a vector of switches for each stage
-    std::vector<std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>> switches(num_stages, std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>(num_switches));
-
-    for (uint32_t stage = 0; stage < num_stages; ++stage) {
-      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
-        switches.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
-      }
-    }
-
     // connect input switches
     for (uint32_t i = 0; i < I; ++i) {
       uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
       uint32_t swtch = left_rotate / num_stages;
       uint32_t port = left_rotate % radix_;
-      ReqIn.at(i).bind(&switches.at(0).at(swtch)->ReqIn.at(port));
-      RspOut.at(i).bind(&switches.at(0).at(swtch)->RspOut.at(port));
+      ReqIn.at(i).bind(&switches_.at(0).at(swtch)->ReqIn.at(port));
+      RspOut.at(i).bind(&switches_.at(0).at(swtch)->RspOut.at(port));
     }
 
     // connect internal switches
@@ -1159,8 +1160,8 @@ public:
           uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
           uint32_t new_swtch = left_rotate / num_stages;
           uint32_t new_port = left_rotate % radix_;
-          switches.at(stage).at(swtch)->ReqOut.at(port).bind(&switches.at(stage+1).at(new_swtch)->ReqIn.at(new_port));
-          switches.at(stage).at(swtch)->RspIn.at(port).bind(&switches.at(stage+1).at(new_swtch)->RspOut.at(new_port));
+          switches_.at(stage).at(swtch)->ReqOut.at(port).bind(&switches_.at(stage+1).at(new_swtch)->ReqIn.at(new_port));
+          switches_.at(stage).at(swtch)->RspIn.at(port).bind(&switches_.at(stage+1).at(new_swtch)->RspOut.at(new_port));
         }
       }
     }
@@ -1169,8 +1170,8 @@ public:
     for (uint32_t o = 0; o < I; ++o) {
       uint32_t swtch = o / num_stages;
       uint32_t port = o % radix_;
-      switches.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
-      switches.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(o));
+      switches_.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
+      switches_.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(o));
     }
 
     // process outgoing responses
@@ -1275,6 +1276,7 @@ protected:
   std::vector<uint32_t> rsp_grants_;
   uint32_t lg2_inputs_;
   uint32_t lg2_outputs_;
+  std::vector<std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>> switches_;
   uint32_t addr_start_;
   uint64_t collisions_;
 };
