@@ -689,12 +689,45 @@ public:
     assert(ispow2(num_outputs));
     assert(ispow2(radix));
 
-    uint32_t num_stages = 1 << lg2_inputs_ / log2ceil(radix_);
-    uint32_t num_switches = Inputs.size() / radix_;
+    uint32_t radix_lg = log2ceil(radix_);
+    uint32_t I = Inputs.size();
+    uint32_t O = Outputs.size();
+    uint32_t R = 1 << lg2_inputs_;
+    uint32_t num_stages = R / radix_lg;
+    uint32_t num_switches = I / radix_;
+
     for (uint32_t stage = 0; stage < num_stages; ++stage) {
       for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
         switches_.at(stage).at(swtch) = CrossBar<Type>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
       }
+    }
+
+    // connect input switches
+    for (uint32_t i = 0; i < I; ++i) {
+      uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
+      uint32_t swtch = left_rotate / radix_;
+      uint32_t port = left_rotate % radix_;
+      Inputs.at(i).bind(&switches_.at(0).at(swtch)->Inputs.at(port));
+    }
+
+    // connect internal switches
+    for (uint32_t stage = 0; stage < num_stages-1; ++stage) {
+      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+        for (uint32_t port = 0; port < radix_; ++port) {
+          uint32_t i = swtch * radix_ + port;
+          uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
+          uint32_t new_swtch = left_rotate / radix_;
+          uint32_t new_port = left_rotate % radix_;
+          switches_.at(stage).at(swtch)->Outputs.at(port).bind(&switches_.at(stage+1).at(new_swtch)->Inputs.at(new_port));
+        }
+      }
+    }
+
+    // connect output switches
+    for (uint32_t o = 0; o < I; ++o) {
+      uint32_t swtch = o / radix_;
+      uint32_t port = o % radix_;
+      &switches_.at(num_stages - 1).at(swtch)->Outputs.at(port).bind(&Outputs.at(o));
     }
   }
 
@@ -711,34 +744,6 @@ public:
     uint32_t R = 1 << lg2_inputs_;
     uint32_t num_stages = R / radix_lg;
     uint32_t num_switches = I / radix_;
-
-    // connect input switches
-    for (uint32_t i = 0; i < I; ++i) {
-      uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
-      uint32_t swtch = left_rotate / num_stages;
-      uint32_t port = left_rotate % radix_;
-      Inputs.at(i).bind(&switches_.at(0).at(swtch)->Inputs.at(port));
-    }
-
-    // connect internal switches
-    for (uint32_t stage = 0; stage < num_stages-1; ++stage) {
-      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
-        for (uint32_t port = 0; port < radix_; ++port) {
-          uint32_t i = swtch * radix_ + port;
-          uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
-          uint32_t new_swtch = left_rotate / num_stages;
-          uint32_t new_port = left_rotate % radix_;
-          switches_.at(stage).at(swtch)->Outputs.at(port).bind(&switches_.at(stage+1).at(new_swtch)->Inputs.at(new_port));
-        }
-      }
-    }
-
-    // connect output switches
-    for (uint32_t o = 0; o < I; ++o) {
-      uint32_t swtch = o / num_stages;
-      uint32_t port = o % radix_;
-      &switches_.at(num_stages - 1).at(swtch)->Outputs.at(port).bind(&Outputs.at(o));
-    }
 
     // process incoming requests
     for (uint32_t o = 0; o < O; ++o) {
@@ -1107,7 +1112,7 @@ public:
     , rsp_grants_(num_inputs, 0)
     , lg2_inputs_(log2ceil(num_inputs))
     , lg2_outputs_(log2ceil(num_outputs))
-    , switches_((1 << lg2_inputs_ / log2ceil(radix_)), std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>(ReqIn.size() / radix_))
+    , switches_((num_inputs > 1 ) ? (1 << lg2_inputs_ / log2ceil(radix_)) : 1, std::vector<TxCrossBar<MemReq, MemRsp>::Ptr>((num_inputs > 1 ) ? (ReqIn.size() / radix_) : 1))
     , addr_start_(addr_start)
     , collisions_(0) {
     assert(delay != 0);
@@ -1116,11 +1121,62 @@ public:
     assert(ispow2(num_outputs));
     assert(ispow2(radix));
 
-    uint32_t num_stages = 1 << lg2_inputs_ / log2ceil(radix_);
-    uint32_t num_switches = ReqIn.size() / radix_;
-    for (uint32_t stage = 0; stage < num_stages; ++stage) {
-      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
-        switches_.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create("omega-switch", ArbiterType::RoundRobin, radix_, radix_);
+    uint32_t radix_lg = log2ceil(radix_);
+    uint32_t I = ReqIn.size();
+    uint32_t O = ReqOut.size();
+    uint32_t R = lg2_inputs_;
+    uint32_t T = lg2_outputs_;
+    uint32_t num_stages = R / radix_lg;
+    uint32_t num_switches = I / radix_;
+
+    if (I <= radix_ && O <= radix_) {
+      switches_.at(0).at(0) = TxCrossBar<MemReq, MemRsp>::Create(("omega-switch-0-0"), ArbiterType::RoundRobin, I, O);
+      for (uint32_t i = 0; i < I; ++i) {
+        ReqIn.at(i).bind(&switches_.at(0).at(0)->ReqIn.at(i));
+        switches_.at(0).at(0)->RspIn.at(i).bind(&RspIn.at(i));
+      }
+      for (uint32_t o = 0; o < O; ++o) {
+        RspOut.at(o).bind(&switches_.at(0).at(0)->RspOut.at(o));
+        switches_.at(0).at(0)->ReqOut.at(o).bind(&ReqOut.at(o));
+      }
+    } else {
+      char sname[20];
+      for (uint32_t stage = 0; stage < num_stages; ++stage) {
+        for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+          snprintf(sname, 20, "omega-switch-%d-%d", stage, swtch);
+          switches_.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create(sname, ArbiterType::RoundRobin, radix_, radix_);
+        }
+      }
+
+      // connect input switches
+      for (uint32_t i = 0; i < I; ++i) {
+        uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
+        uint32_t swtch = left_rotate / radix_;
+        uint32_t port = left_rotate % radix_;
+        ReqIn.at(i).bind(&switches_.at(0).at(swtch)->ReqIn.at(port));
+        switches_.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(i));
+      }
+
+      // connect internal switches
+      for (uint32_t stage = 0; stage < num_stages-1; ++stage) {
+        for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
+          for (uint32_t port = 0; port < radix_; ++port) {
+            uint32_t i = swtch * radix_ + port;
+            uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
+            uint32_t new_swtch = left_rotate / radix_;
+            uint32_t new_port = left_rotate % radix_;
+            switches_.at(stage).at(swtch)->ReqOut.at(port).bind(&switches_.at(stage+1).at(new_swtch)->ReqIn.at(new_port));
+            switches_.at(stage).at(swtch)->RspIn.at(port).bind(&switches_.at(stage+1).at(new_swtch)->RspOut.at(new_port));
+          }
+        }
+      }
+
+      // connect output switches
+      for (uint32_t o = 0; o < O; ++o) {
+        uint32_t swtch = o / radix_;
+        uint32_t port = o % radix_;
+        switches_.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
+        RspOut.at(o).bind(&switches_.at(0).at(swtch)->RspOut.at(port));
       }
     }
   }
@@ -1143,37 +1199,7 @@ public:
     uint32_t num_stages = R / radix_lg;
     uint32_t num_switches = I / radix_;
 
-    // connect input switches
-    for (uint32_t i = 0; i < I; ++i) {
-      uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
-      uint32_t swtch = left_rotate / num_stages;
-      uint32_t port = left_rotate % radix_;
-      ReqIn.at(i).bind(&switches_.at(0).at(swtch)->ReqIn.at(port));
-      RspOut.at(i).bind(&switches_.at(0).at(swtch)->RspOut.at(port));
-    }
-
-    // connect internal switches
-    for (uint32_t stage = 0; stage < num_stages-1; ++stage) {
-      for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
-        for (uint32_t port = 0; port < radix_; ++port) {
-          uint32_t i = swtch * radix_ + port;
-          uint32_t left_rotate = (i << 1 | i >> (R - 1)) & (I - 1);
-          uint32_t new_swtch = left_rotate / num_stages;
-          uint32_t new_port = left_rotate % radix_;
-          switches_.at(stage).at(swtch)->ReqOut.at(port).bind(&switches_.at(stage+1).at(new_swtch)->ReqIn.at(new_port));
-          switches_.at(stage).at(swtch)->RspIn.at(port).bind(&switches_.at(stage+1).at(new_swtch)->RspOut.at(new_port));
-        }
-      }
-    }
-
-    // connect output switches
-    for (uint32_t o = 0; o < I; ++o) {
-      uint32_t swtch = o / num_stages;
-      uint32_t port = o % radix_;
-      switches_.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
-      switches_.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(o));
-    }
-
+    /*
     // process outgoing responses
     for (uint32_t i = 0; i < I; ++i) {
       int32_t output_idx = -1;
@@ -1249,6 +1275,7 @@ public:
         this->update_req_grant(o, input_idx);
       }
     }
+    */
   }
 
   uint64_t collisions() const {

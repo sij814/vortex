@@ -359,16 +359,16 @@ public:
 		auto bank_mem_arb = MemArbiter::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports);
 		auto bank_mem_arb_omega = MemOmega::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports, 2);
 		for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
-			mem_req_ports_.at(i).bind(&bank_mem_arb->ReqIn.at(i));
-			bank_mem_arb->RspIn.at(i).bind(&mem_rsp_ports_.at(i));
+			mem_req_ports_.at(i).bind(&bank_mem_arb_omega->ReqIn.at(i));
+			bank_mem_arb_omega->RspIn.at(i).bind(&mem_rsp_ports_.at(i));
 		}
 
 		// Connect bank's memory arbiter to non-cacheable arbiter's input 0
 		for (uint32_t i = 0; i < config_.mem_ports; ++i) {
-			bank_mem_arb->ReqOut.at(i).bind(&nc_arbs_.at(i)->ReqIn.at(0));
-			nc_arbs_.at(i)->RspIn.at(0).bind(&bank_mem_arb->RspOut.at(i));
+			bank_mem_arb_omega->ReqOut.at(i).bind(&nc_arbs_.at(i)->ReqIn.at(0));
+			nc_arbs_.at(i)->RspIn.at(0).bind(&bank_mem_arb_omega->RspOut.at(i));
 		}
-
+ 
 		// calculate cache initialization cycles
 		init_cycles_ = params_.sets_per_bank * params_.lines_per_set;
 	}
