@@ -356,11 +356,11 @@ public:
 
 		// Create bank's memory arbiter
 		// arbitration here
-		//if (false) {
-		if (config_.mem_ports > 1 && (1 << config.B) > config_.mem_ports) {
+		if (false) {
+		//if (config_.mem_ports > 1 && (1 << config.B) > config_.mem_ports) {
 			uint32_t overlap = (1 << config.B) / config_.mem_ports;
 			std::vector<MemArbiter::Ptr> bank_mem_arbs(config_.mem_ports);
-			
+
 			for (uint32_t i = 0; i < config_.mem_ports; ++i) {
 				bank_mem_arbs.at(i) = MemArbiter::Create(sname, ArbiterType::RoundRobin, overlap);
 				bank_mem_arbs.at(i)->ReqOut.at(0).bind(&nc_arbs_.at(i)->ReqIn.at(0));
@@ -378,6 +378,7 @@ public:
 			}
 		} else {
 			auto bank_mem_arb = MemArbiter::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports);
+			//auto bank_mem_arb_xbar = MemCrossBar::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports, 0, params_.bank_select_addr_start);
 			//auto bank_mem_arb_omega = MemOmega::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports, 2, params_.bank_select_addr_start);
 
 			for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {

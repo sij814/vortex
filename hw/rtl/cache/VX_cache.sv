@@ -515,7 +515,6 @@ module VX_cache import VX_gpu_pkg::*; #(
     wire [MEM_PORTS-1:0] mem_req_ready;
     wire [MEM_PORTS-1:0][MEM_ARB_SEL_WIDTH-1:0] mem_req_sel_out;
     
-    /*
     VX_stream_arb #(
         .NUM_INPUTS (NUM_BANKS),
         .NUM_OUTPUTS(MEM_PORTS),
@@ -532,8 +531,8 @@ module VX_cache import VX_gpu_pkg::*; #(
         .ready_out (mem_req_ready),
         .sel_out   (mem_req_sel_out)
     );
-    */
 
+    /*
     for (genvar i = 0; i < MEM_PORTS; ++i) begin : g_mem_req_arbs
         VX_stream_arb #(
             .NUM_INPUTS (MEM_BANKS_PER_PORT),
@@ -552,6 +551,7 @@ module VX_cache import VX_gpu_pkg::*; #(
             .sel_out   (mem_req_sel_out[i])
         );
     end
+    */
 
     for (genvar i = 0; i < MEM_PORTS; ++i) begin : g_mem_req_buf
         wire                          mem_req_rw;
