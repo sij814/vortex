@@ -355,18 +355,41 @@ public:
 		}
 
 		// Create bank's memory arbiter
-		snprintf(sname, 100, "%s-bank-arb", simobject->name().c_str());
-		auto bank_mem_arb = MemArbiter::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports);
-		//auto bank_mem_arb_omega = MemOmega::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports, 2);
-		for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
-			mem_req_ports_.at(i).bind(&bank_mem_arb->ReqIn.at(i));
-			bank_mem_arb->RspIn.at(i).bind(&mem_rsp_ports_.at(i));
-		}
+		// arbitration here
+		//if (false) {
+		if (config_.mem_ports > 1 && (1 << config.B) > config_.mem_ports) {
+			uint32_t overlap = (1 << config.B) / config_.mem_ports;
+			std::vector<MemArbiter::Ptr> bank_mem_arbs(config_.mem_ports);
+			
+			for (uint32_t i = 0; i < config_.mem_ports; ++i) {
+				bank_mem_arbs.at(i) = MemArbiter::Create(sname, ArbiterType::RoundRobin, overlap);
+				bank_mem_arbs.at(i)->ReqOut.at(0).bind(&nc_arbs_.at(i)->ReqIn.at(0));
+				nc_arbs_.at(i)->RspIn.at(0).bind(&bank_mem_arbs.at(i)->RspOut.at(0));
+			}
 
-		// Connect bank's memory arbiter to non-cacheable arbiter's input 0
-		for (uint32_t i = 0; i < config_.mem_ports; ++i) {
-			bank_mem_arb->ReqOut.at(i).bind(&nc_arbs_.at(i)->ReqIn.at(0));
-			nc_arbs_.at(i)->RspIn.at(0).bind(&bank_mem_arb->RspOut.at(i));
+			for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
+				if (false) { // arb 1: finish a subset first
+					mem_req_ports_.at(i).bind(&bank_mem_arbs.at(i % config_.mem_ports)->ReqIn.at(i / config_.mem_ports));
+					bank_mem_arbs.at(i % config_.mem_ports)->RspIn.at(i / config_.mem_ports).bind(&mem_rsp_ports_.at(i));
+				} else { // arb 2: equal chance for every source
+					mem_req_ports_.at(i).bind(&bank_mem_arbs.at(i / overlap)->ReqIn.at(i % overlap));
+					bank_mem_arbs.at(i / overlap)->RspIn.at(i % overlap).bind(&mem_rsp_ports_.at(i));
+				}
+			}
+		} else {
+			auto bank_mem_arb = MemArbiter::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports);
+			//auto bank_mem_arb_omega = MemOmega::Create(sname, ArbiterType::RoundRobin, (1 << config.B), config_.mem_ports, 2, params_.bank_select_addr_start);
+
+			for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
+				mem_req_ports_.at(i).bind(&bank_mem_arb->ReqIn.at(i));
+				bank_mem_arb->RspIn.at(i).bind(&mem_rsp_ports_.at(i));
+			}
+
+			// Connect bank's memory arbiter to non-cacheable arbiter's input 0
+			for (uint32_t i = 0; i < config_.mem_ports; ++i) {
+				bank_mem_arb->ReqOut.at(i).bind(&nc_arbs_.at(i)->ReqIn.at(0));
+				nc_arbs_.at(i)->RspIn.at(0).bind(&bank_mem_arb->RspOut.at(i));
+			}
 		}
  
 		// calculate cache initialization cycles

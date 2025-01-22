@@ -564,6 +564,7 @@ public:
     ArbiterType type,
     uint32_t num_inputs,
     uint32_t num_outputs = 1,
+    uint32_t tag_carry = 0,
     uint32_t addr_start = 0,
     uint32_t delay = 1
   )
@@ -575,6 +576,7 @@ public:
     , grants_(num_outputs, 0)
     , lg2_inputs_(log2ceil(num_inputs))
     , lg2_outputs_(log2ceil(num_outputs))
+    , tag_carry_(tag_carry)
     , addr_start_(addr_start)
     , collisions_(0) {
     assert(delay != 0);
@@ -649,6 +651,7 @@ protected:
   std::vector<uint32_t> grants_;
   uint32_t lg2_inputs_;
   uint32_t lg2_outputs_;
+  uint32_t tag_carry_;
   uint32_t addr_start_;
   uint64_t collisions_;
 };
@@ -936,6 +939,7 @@ public:
     ArbiterType type,
     uint32_t num_inputs,
     uint32_t num_outputs = 1,
+    uint32_t tag_carry = 0,
     uint32_t addr_start = 0,
     uint32_t delay = 1
   )
@@ -950,6 +954,7 @@ public:
     , rsp_grants_(num_inputs, 0)
     , lg2_inputs_(log2ceil(num_inputs))
     , lg2_outputs_(log2ceil(num_outputs))
+    , tag_carry_(tag_carry)
     , addr_start_(addr_start)
     , collisions_(0) {
     assert(delay != 0);
@@ -1026,7 +1031,7 @@ public:
           // skip if request is not going to current output
           uint32_t output_idx = 0;
           if (O != 1) {
-            output_idx = (uint32_t)bit_getw(req.addr, addr_start_, lg2_outputs_-1);
+            output_idx = (uint32_t)bit_getw(req.addr, addr_start_, addr_start_ + lg2_outputs_-1);
           }
           if (output_idx != o)
             continue;
@@ -1040,10 +1045,11 @@ public:
       if (input_idx != -1) {
         auto& req_in = ReqIn.at(input_idx);
         auto& req = req_in.front();
-        if (lg2_inputs_ != 0) {
+        if (tag_carry_ == 0 && lg2_inputs_ != 0) {
           req.tag = (req.tag << lg2_inputs_) | input_idx;
         }
-        DT(4, this->name() << "-req" << input_idx << ": " << req);
+        DT(4, this->name() << "-req-input" << input_idx << ": " << req);
+        DT(4, this->name() << "-req-output" << o << ": " << req << " tag: " << req.tag);
         ReqOut.at(o).push(req, delay_);
         req_in.pop();
         this->update_req_grant(o, input_idx);
@@ -1075,6 +1081,7 @@ protected:
   std::vector<uint32_t> rsp_grants_;
   uint32_t lg2_inputs_;
   uint32_t lg2_outputs_;
+  uint32_t tag_carry_;
   uint32_t addr_start_;
   uint64_t collisions_;
 };
@@ -1130,7 +1137,7 @@ public:
     uint32_t num_switches = I / radix_;
 
     if (I <= radix_ && O <= radix_) {
-      switches_.at(0).at(0) = TxCrossBar<MemReq, MemRsp>::Create(("omega-switch-0-0"), ArbiterType::RoundRobin, I, O);
+      switches_.at(0).at(0) = TxCrossBar<MemReq, MemRsp>::Create(("omega-switch-0-0"), ArbiterType::RoundRobin, I, O, 0, addr_start_);
       for (uint32_t i = 0; i < I; ++i) {
         ReqIn.at(i).bind(&switches_.at(0).at(0)->ReqIn.at(i));
         switches_.at(0).at(0)->RspIn.at(i).bind(&RspIn.at(i));
@@ -1144,7 +1151,11 @@ public:
       for (uint32_t stage = 0; stage < num_stages; ++stage) {
         for (uint32_t swtch = 0; swtch < num_switches; ++swtch) {
           snprintf(sname, 20, "omega-switch-%d-%d", stage, swtch);
-          switches_.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create(sname, ArbiterType::RoundRobin, radix_, radix_);
+          if (stage == 0) {
+            switches_.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create(sname, ArbiterType::RoundRobin, radix_, radix_, 0, addr_start_ + ((num_stages - 1) - stage));
+          } else {
+            switches_.at(stage).at(swtch) = TxCrossBar<MemReq, MemRsp>::Create(sname, ArbiterType::RoundRobin, radix_, radix_, 1, addr_start_ + ((num_stages - 1) - stage));
+          }
         }
       }
 

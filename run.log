@@ -1,0 +1,4 @@
+make: Entering directory '/home/sij814/hbm2/vortex/tests/regression/vecaddx'
+Makefile:2: /home/sij814/hbm2/vortex/config.mk: No such file or directory
+make: *** No rule to make target '/home/sij814/hbm2/vortex/config.mk'.  Stop.
+make: Leaving directory '/home/sij814/hbm2/vortex/tests/regression/vecaddx'
