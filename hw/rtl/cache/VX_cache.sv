@@ -105,7 +105,6 @@ module VX_cache import VX_gpu_pkg::*; #(
     localparam MEM_PORTS_SEL_WIDTH = `UP(MEM_PORTS_SEL_BITS);
     localparam MEM_ARB_SEL_BITS = `CLOG2(`CDIV(NUM_BANKS, MEM_PORTS));
     localparam MEM_ARB_SEL_WIDTH = `UP(MEM_ARB_SEL_BITS);
-    localparam MEM_BANKS_PER_PORT = NUM_BANKS / MEM_PORTS;
 
     localparam CORE_RSP_REG_DISABLE = (NUM_BANKS != 1) || (NUM_REQS != 1);
     localparam MEM_REQ_REG_DISABLE  = (NUM_BANKS != 1);
@@ -531,27 +530,6 @@ module VX_cache import VX_gpu_pkg::*; #(
         .ready_out (mem_req_ready),
         .sel_out   (mem_req_sel_out)
     );
-
-    /*
-    for (genvar i = 0; i < MEM_PORTS; ++i) begin : g_mem_req_arbs
-        VX_stream_arb #(
-            .NUM_INPUTS (MEM_BANKS_PER_PORT),
-            .NUM_OUTPUTS(1),
-            .DATAW      (MEM_REQ_DATAW),
-            .ARBITER    ("R")
-        ) mem_req_arb (
-            .clk       (clk),
-            .reset     (reset),
-            .valid_in  (per_bank_mem_req_valid[(i+1)*MEM_BANKS_PER_PORT-1:i*MEM_BANKS_PER_PORT]),
-            .data_in   (per_bank_mem_req_pdata[(i+1)*MEM_BANKS_PER_PORT-1:i*MEM_BANKS_PER_PORT]),
-            .ready_in  (per_bank_mem_req_ready[(i+1)*MEM_BANKS_PER_PORT-1:i*MEM_BANKS_PER_PORT]),
-            .valid_out (mem_req_valid[i]),
-            .data_out  (mem_req_pdata[i]),
-            .ready_out (mem_req_ready[i]),
-            .sel_out   (mem_req_sel_out[i])
-        );
-    end
-    */
 
     for (genvar i = 0; i < MEM_PORTS; ++i) begin : g_mem_req_buf
         wire                          mem_req_rw;

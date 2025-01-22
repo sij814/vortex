@@ -1165,7 +1165,7 @@ public:
         uint32_t swtch = left_rotate / radix_;
         uint32_t port = left_rotate % radix_;
         ReqIn.at(i).bind(&switches_.at(0).at(swtch)->ReqIn.at(port));
-        switches_.at(num_stages - 1).at(swtch)->RspIn.at(port).bind(&RspIn.at(i));
+        switches_.at(0).at(swtch)->RspIn.at(port).bind(&RspIn.at(i));
       }
 
       // connect internal switches
@@ -1187,7 +1187,7 @@ public:
         uint32_t swtch = o / radix_;
         uint32_t port = o % radix_;
         switches_.at(num_stages - 1).at(swtch)->ReqOut.at(port).bind(&ReqOut.at(o));
-        RspOut.at(o).bind(&switches_.at(0).at(swtch)->RspOut.at(port));
+        RspOut.at(o).bind(&switches_.at(num_stages-1).at(swtch)->RspOut.at(port));
       }
     }
   }
