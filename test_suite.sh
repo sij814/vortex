@@ -1,13 +1,33 @@
+#!/bin/bash
+
 cd build
 source ./ci/toolchain_env.sh
 
-rm output.txt
+list=("conv3" "dotproduct" "sgemm" "transpose" "vecadd")
+mem_port=("2" "4" "8")
+clusters=("2" "4" "8")
+drivers=("simx" "rtlsim")
 
-make -s
+size=16
+size_sq=$((size*size))
 
-./ci/blackbox.sh --driver=simx --app=blackscholes --args='-n64' --cores=8 --clusters=4 --l2cache --l3cache --rebuild=1 --perf=2 >> output.txt #2D
-./ci/blackbox.sh --driver=simx --app=conv3 --args='-n64' --cores=8 --clusters=4 --l2cache --l3cache  --perf=2 >> output.txt #2D
-./ci/blackbox.sh --driver=simx --app=saxpy --args='-n4096' --cores=8 --clusters=4 --l2cache --l3cache  --perf=2 >> output.txt #1D
-./ci/blackbox.sh --driver=simx --app=sgemmx --args='-n64' --cores=8 --clusters=4 --l2cache --l3cache --perf=2 >> output.txt #2D
-./ci/blackbox.sh --driver=simx --app=sgemm2x --args='-n64' --cores=8 --clusters=4 --l2cache --l3cache --perf=2 >> output.txt #2D
-./ci/blackbox.sh --driver=simx --app=vecaddx --args='-n4096' --cores=8 --clusters=4 --l2cache --l3cache --perf=2 >> output.txt #1D
+# configuration
+for cluster in "${clusters[@]}"
+do
+    cores=$((32/cluster))
+    # number of mem_ports
+    for port in "${mem_port[@]}"
+    do
+        rm output_${cluster}_${port}.txt
+
+        # simx or rtlsim
+        for driver in "${drivers[@]}"
+        do
+            CONFIGS="-DPLATFORM_MEMORY_BANKS=$port" ./ci/blackbox.sh --driver=$driver --app=conv3 --args='-n'"$size"'' --cores=$cores --clusters=$cluster --l2cache --rebuild=1 --perf=2 >> output_${cluster}_${port}.txt
+            CONFIGS="-DPLATFORM_MEMORY_BANKS=$port" ./ci/blackbox.sh --driver=$driver --app=dotproduct --args='-n'"$size_sq"'' --cores=$cores --clusters=$cluster --l2cache --perf=2 >> output_${cluster}_${port}.txt
+            CONFIGS="-DPLATFORM_MEMORY_BANKS=$port" ./ci/blackbox.sh --driver=$driver --app=sgemm --args='-n'"$size"'' --cores=$cores --clusters=$cluster --l2cache --perf=2 >> output_${cluster}_${port}.txt
+            CONFIGS="-DPLATFORM_MEMORY_BANKS=$port" ./ci/blackbox.sh --driver=$driver --app=transpose --args='-n'"$size"'' --cores=$cores --clusters=$cluster --l2cache --perf=2 >> output_${cluster}_${port}.txt
+            CONFIGS="-DPLATFORM_MEMORY_BANKS=$port" ./ci/blackbox.sh --driver=$driver --app=vecadd --args='-n'"$size_sq"'' --cores=$cores --clusters=$cluster --l2cache --perf=2 >> output_${cluster}_${port}.txt
+        done
+    done
+done

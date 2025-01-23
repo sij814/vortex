@@ -368,7 +368,7 @@ public:
 			}
 
 			for (uint32_t i = 0, n = (1 << config.B); i < n; ++i) {
-				if (false) { // arb 1: finish a subset first
+				if (ARB_METHOD == 0) { // arb 1: finish a subset first
 					mem_req_ports_.at(i).bind(&bank_mem_arbs.at(i % config_.mem_ports)->ReqIn.at(i / config_.mem_ports));
 					bank_mem_arbs.at(i % config_.mem_ports)->RspIn.at(i / config_.mem_ports).bind(&mem_rsp_ports_.at(i));
 				} else { // arb 2: equal chance for every source
