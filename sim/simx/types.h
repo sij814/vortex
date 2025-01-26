@@ -1032,7 +1032,6 @@ public:
           uint32_t output_idx = 0;
           if (O != 1) {
             output_idx = (uint32_t)bit_getw(req.addr, addr_start_, addr_start_ + lg2_outputs_-1);
-            //std::cout << "*** req.addr=" << std::hex << req.addr << std::dec << ", output_idx=" << output_idx << std::endl;
           }
           if (output_idx != o)
             continue;

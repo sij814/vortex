@@ -45,7 +45,7 @@ public:
 	{
 		char sname[100];
 		snprintf(sname, 100, "%s-xbar", simobject->name().c_str());
-		mem_xbar_ = MemCrossBar::Create(sname, ArbiterType::RoundRobin, config.num_ports, config.num_banks, 0, log2ceil(MEM_BLOCK_SIZE));
+		mem_xbar_ = MemCrossBar::Create(sname, ArbiterType::RoundRobin, config.num_ports, config.num_banks, 0, 0);
 		for (uint32_t i = 0; i < config.num_ports; ++i) {
 			simobject->MemReqPorts.at(i).bind(&mem_xbar_->ReqIn.at(i));
 			mem_xbar_->RspIn.at(i).bind(&simobject->MemRspPorts.at(i));
