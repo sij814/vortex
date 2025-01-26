@@ -19,7 +19,7 @@ class DramSim {
 public:
   typedef void (*ResponseCallback)(void *arg);
 
-  DramSim(int clock_ratio);
+  DramSim(int clock_ratio, int num_channels);
   ~DramSim();
 
   void reset();

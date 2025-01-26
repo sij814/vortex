@@ -95,7 +95,7 @@ public:
   Impl()
   : device_(nullptr)
   , ram_(nullptr)
-  , dram_sim_(MEM_CLOCK_RATIO)
+  , dram_sim_(MEM_CLOCK_RATIO, PLATFORM_MEMORY_BANKS)
   , stop_(false)
   , host_buffer_ids_(0)
 #ifdef VCD_OUTPUT

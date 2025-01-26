@@ -173,7 +173,7 @@
 `endif
 
 `ifndef PLATFORM_MEMORY_BANKS
-`define PLATFORM_MEMORY_BANKS 2
+`define PLATFORM_MEMORY_BANKS 8
 `endif
 
 `ifndef ARB_METHOD
