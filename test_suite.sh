@@ -9,7 +9,7 @@ mkdir "$dirname"
 mem_port=("1" "2" "4" "8")
 drivers=("simx" "rtlsim")
 
-size=32
+size=64
 size_sq=$((size*size))
 
 # configuration
