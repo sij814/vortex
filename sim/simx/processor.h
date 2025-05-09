@@ -36,6 +36,11 @@ public:
   int run();
 
   void dcr_write(uint32_t addr, uint32_t value);
+
+  bool get_running();
+
+  int set_running(bool val);
+
 #ifdef VM_ENABLE
   bool is_satp_unset();
   uint8_t get_satp_mode();

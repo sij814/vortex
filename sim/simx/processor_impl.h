@@ -40,6 +40,10 @@ public:
 
   void dcr_write(uint32_t addr, uint32_t value);
 
+  bool get_running();
+
+  int set_running(bool val);
+
 #ifdef VM_ENABLE
   void set_satp(uint64_t satp);
 #endif
@@ -47,7 +51,6 @@ public:
   PerfStats perf_stats() const;
 
 private:
-
   void reset();
 
   const Arch& arch_;
@@ -59,6 +62,7 @@ private:
   uint64_t perf_mem_writes_;
   uint64_t perf_mem_latency_;
   uint64_t perf_mem_pending_reads_;
+  bool running;
 };
 
 }

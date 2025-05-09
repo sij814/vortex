@@ -22,6 +22,8 @@ ProcessorImpl::ProcessorImpl(const Arch& arch)
 {
   SimPlatform::instance().initialize();
 
+  running = false;
+
 	assert(PLATFORM_MEMORY_DATA_SIZE == MEM_BLOCK_SIZE);
 
   // create memory simulator
@@ -118,14 +120,12 @@ void ProcessorImpl::set_satp(uint64_t satp) {
 #endif
 
 int ProcessorImpl::run() {
-  SimPlatform::instance().reset();
-  this->reset();
-
-  bool done;
   int exitcode = 0;
-  do {
+  bool done = false;
+  if (running) {
     SimPlatform::instance().tick();
     done = true;
+  
     for (auto cluster : clusters_) {
       if (cluster->running()) {
         done = false;
@@ -136,7 +136,12 @@ int ProcessorImpl::run() {
     #endif
     }
     perf_mem_latency_ += perf_mem_pending_reads_;
-  } while (!done);
+  }
+
+  if (done) {
+    running = false;
+    this->reset();
+  }
 
   return exitcode;
 }
@@ -150,6 +155,15 @@ void ProcessorImpl::reset() {
 
 void ProcessorImpl::dcr_write(uint32_t addr, uint32_t value) {
   dcrs_.write(addr, value);
+}
+
+bool ProcessorImpl::get_running() {
+  return running;
+}
+
+int ProcessorImpl::set_running(bool val) {
+  running = val;
+  return 0;
 }
 
 ProcessorImpl::PerfStats ProcessorImpl::perf_stats() const {
@@ -191,6 +205,15 @@ int Processor::run() {
 void Processor::dcr_write(uint32_t addr, uint32_t value) {
   return impl_->dcr_write(addr, value);
 }
+
+bool Processor::get_running() {
+  return impl_->get_running();
+}
+
+int Processor::set_running(bool val) {
+  return impl_->set_running(val);
+}
+
 
 #ifdef VM_ENABLE
 int16_t Processor::set_satp_by_addr(uint64_t base_addr) {
