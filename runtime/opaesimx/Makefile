@@ -9,6 +9,7 @@ SYN_DIR := $(HW_DIR)/syn/altera/opae
 
 SRC_DIR := $(VORTEX_HOME)/runtime/opaesimx
 
+CXX := arm-linux-gnueabihf-g++
 CXXFLAGS += -std=c++17 -Wall -Wextra -pedantic -Wfatal-errors
 CXXFLAGS += -I$(INC_DIR) -I$(COMMON_DIR) -I$(ROOT_DIR)/hw -I$(DESTDIR) -I$(SIM_DIR)/common
 CXXFLAGS += -DXLEN_$(XLEN)
@@ -19,13 +20,12 @@ CXXFLAGS += -fPIC
 # Add external configuration
 CXXFLAGS += $(CONFIGS)
 
-LDFLAGS += -shared -luuid -ldl -pthread
-
 SRCS = $(SRC_DIR)/vortex.cpp $(SRC_DIR)/driver.cpp
+OBJS := $(SRCS:.cpp=.o)
 
 # set up target types
 ifeq ($(TARGET), opaesimx)
-	BUILD_DEPS = $(DESTDIR)/libopaesimx-c-sim.so
+	BUILD_DEPS = $(DESTDIR)/libopaesimx-c-sim.a
 	CXXFLAGS += -DOPAESIMX -I$(SIM_DIR)/opaesimx
 else
 	BUILD_DEPS = $(ROOT_DIR)/hw/syn/altera/opae/vortex_afu.h
@@ -45,26 +45,34 @@ ifdef SCOPE
 	SRCS += $(COMMON_DIR)/scope.cpp
 endif
 
-PROJECT := libvortex-opaesimx.so
+PROJECT := libvortex-opaesimx.a
 
 all: $(DESTDIR)/$(PROJECT)
 
-$(ROOT_DIR)/hw/syn/altera/opae/vortex_afu.h:
-	$(MAKE) -C $(ROOT_DIR)/hw/syn/altera/opae swconfig
+driver: $(DESTDIR)/libopaesimx-c-sim.a
 
-driver: $(DESTDIR)/libopaesimx-c-sim.so
+$(DESTDIR)/libopaesimx-c-sim.a:
+	DESTDIR=$(DESTDIR) $(MAKE) -C $(ROOT_DIR)/sim/opaesimx $(DESTDIR)/libopaesimx-c-sim.a
 
-$(DESTDIR)/libopaesimx-c-sim.so:
-	DESTDIR=$(DESTDIR) $(MAKE) -C $(ROOT_DIR)/sim/opaesimx $(DESTDIR)/libopaesimx-c-sim.so
+#$(DESTDIR)/$(PROJECT): $(SRCS) $(BUILD_DEPS)
+#	$(CXX) $(CXXFLAGS) $(SRCS) $(LDFLAGS) -o $@
 
-$(DESTDIR)/$(PROJECT): $(SRCS) $(BUILD_DEPS)
-	$(CXX) $(CXXFLAGS) $(SRCS) $(LDFLAGS) -o $@
+# 1) compile .cpp -> .o
+%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# 2) archive .o -> .a
+$(DESTDIR)/$(PROJECT): $(BUILD_DEPS) $(OBJS)
+	@mkdir -p $(DESTDIR)
+	$(AR) rcs $@ $(OBJS)
 
 clean-driver:
 	DESTDIR=$(DESTDIR) $(MAKE) -C $(ROOT_DIR)/sim/opaesimx clean
 
 clean-runtime:
 	rm -f $(DESTDIR)/$(PROJECT)
+	rm -f $(OBJS) *.o
 
 clean: clean-driver clean-runtime
 

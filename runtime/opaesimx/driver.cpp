@@ -17,72 +17,34 @@
 #include <string.h>
 #include <unistd.h>
 #include <linux/limits.h>
-#include <dlfcn.h>
 #include <string>
 #include <vector>
 #include <sstream>
 
-#define DEFAULT_OPAE_DRV_PATHS "libopaesimx-c.so"
+int drv_init(opae_drv_api_t* api)
+{
+    if (!api) return -1;
 
-#define SET_API(func) \
-	opae_drv_funcs->func = (pfn_##func)dlsym(dl_handle, #func); \
-	if (opae_drv_funcs->func == nullptr) { \
-    printf("dlsym failed: %s\n", dlerror()); \
-		dlclose(dl_handle); \
-    return -1; \
-	}
+    api->fpgaGetProperties               = ::fpgaGetProperties;
+    api->fpgaPropertiesSetObjectType     = ::fpgaPropertiesSetObjectType;
+    api->fpgaPropertiesSetGUID           = ::fpgaPropertiesSetGUID;
+    api->fpgaDestroyProperties           = ::fpgaDestroyProperties;
+    api->fpgaEnumerate                   = ::fpgaEnumerate;
+    api->fpgaDestroyToken                = ::fpgaDestroyToken;
+    api->fpgaPropertiesGetLocalMemorySize= ::fpgaPropertiesGetLocalMemorySize;
+    api->fpgaOpen                        = ::fpgaOpen;
+    api->fpgaClose                       = ::fpgaClose;
+    api->fpgaPrepareBuffer               = ::fpgaPrepareBuffer;
+    api->fpgaReleaseBuffer               = ::fpgaReleaseBuffer;
+    api->fpgaGetIOAddress                = ::fpgaGetIOAddress;
+    api->fpgaWriteMMIO64                 = ::fpgaWriteMMIO64;
+    api->fpgaReadMMIO64                  = ::fpgaReadMMIO64;
+    api->fpgaErrStr                      = ::fpgaErrStr;
 
-void* dl_handle = nullptr;
-
-int drv_init(opae_drv_api_t* opae_drv_funcs) {
-  if (opae_drv_funcs == nullptr)
-    return -1;
-
-  const char* api_path_s = getenv("OPAE_DRV_PATHS");
-  if (api_path_s == nullptr || api_path_s[0] == '\0') {
-    api_path_s = DEFAULT_OPAE_DRV_PATHS;
-  }
-
-  std::vector<std::string> api_paths;
-  {
-    std::stringstream ss(api_path_s);
-    while (ss.good()) {
-      std::string path;
-      getline(ss, path, ',');
-      api_paths.push_back(path);
-    }
-  }
-
-  for (auto& api_path : api_paths) {
-    dl_handle = dlopen(api_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
-    if (dl_handle)
-      break;
-  }
-
-  if (dl_handle == nullptr) {
-      printf("dlopen failed: %s\n", dlerror());
-      return -1;
-  }
-
-	SET_API (fpgaGetProperties);
-	SET_API (fpgaPropertiesSetObjectType);
-	SET_API (fpgaPropertiesSetGUID);
-	SET_API (fpgaDestroyProperties);
-  SET_API (fpgaDestroyToken);
-  SET_API (fpgaPropertiesGetLocalMemorySize);
-	SET_API (fpgaEnumerate);
-	SET_API (fpgaOpen);
-	SET_API (fpgaClose);
-	SET_API (fpgaPrepareBuffer);
-	SET_API (fpgaReleaseBuffer);
-	SET_API (fpgaGetIOAddress);
-	SET_API (fpgaWriteMMIO64);
-	SET_API (fpgaReadMMIO64);
-	SET_API (fpgaErrStr);
-
-  return 0;
+    return 0;
 }
 
-void drv_close() {
-    dlclose(dl_handle);
+void drv_close()
+{
+    // Nothing to clean up in a statically linked setup
 }

@@ -12,7 +12,7 @@ vortex_path = os.path.join(Dir('#').abspath, 'ext/vortex/')
 print(vortex_path)
 env.Prepend(CPPPATH=Dir('.').srcnode())
 env.Append(
-  LIBS=['vortex', 'simx', 'vortex-simx', 'vortex-opaesimx', 'opaesimx-c-sim'],
+  LIBS=['simx', 'vortex-simx'],
   LIBPATH=[vortex_path+'build/runtime'],
   RPATH=[vortex_path+'build/runtime'],
   CPPPATH=[
@@ -23,4 +23,4 @@ env.Append(
 ])
 
 # export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(pwd)/ext/vortex/build/runtime"
-env.Append(LINKFLAGS=['-Wl,-rpath,/ext/vortex/build/runtime'])
+# env.Append(LINKFLAGS=['-Wl,-rpath,/ext/vortex/build/runtime'])

@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <unordered_map>
-#include <uuid/uuid.h>
+//#include <uuid/uuid.h>
 
 using namespace vortex;
 
@@ -124,9 +124,20 @@ public:
     });
 
     // Add the desired UUID to the filter
-    std::string s_uuid(AFU_ACCEL_UUID);
-    std::replace(s_uuid.begin(), s_uuid.end(), '_', '-');
-    uuid_parse(s_uuid.c_str(), guid);
+    //std::string s_uuid(AFU_ACCEL_UUID);
+    //std::replace(s_uuid.begin(), s_uuid.end(), '_', '-');
+    //uuid_parse(s_uuid.c_str(), guid);
+    uint8_t my_uuid[16] = {
+            0x14, 0xFA, 0x43, 0x24,
+            0x98, 0xA2, 0x44, 0x55,
+            0x8F, 0x57, 0x97, 0x59, 
+            0xE3, 0xFF, 0xEA, 0x1A
+    };
+
+    for (int i = 0; i < sizeof(my_uuid); i++) {
+      guid[i] = my_uuid[i];
+    }
+
     CHECK_FPGA_ERR(api_.fpgaPropertiesSetGUID(filter, guid), {
       api_.fpgaDestroyProperties(&filter);
       return -1;
@@ -179,7 +190,7 @@ public:
       uint64_t num_banks, bank_size;
       this->get_caps(VX_CAPS_NUM_MEM_BANKS, &num_banks);
       this->get_caps(VX_CAPS_MEM_BANK_SIZE, &bank_size);
-      global_mem_size_ = num_banks * bank_size;
+      global_mem_size_ = GLOBAL_MEM_SIZE; //num_banks * bank_size;
     }
 
   #ifdef SCOPE
@@ -289,6 +300,7 @@ public:
   }
 
   int upload(uint64_t dev_addr, const void *host_ptr, uint64_t size) {
+    
     // check alignment
     if (!is_aligned(dev_addr, CACHE_BLOCK_SIZE))
       return -1;
@@ -311,15 +323,15 @@ public:
 
     auto ls_shift = (int)std::log2(CACHE_BLOCK_SIZE);
 
-    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG0, staging_ioaddr_ >> ls_shift), {
+    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG0, staging_ioaddr_), {
       return -1;
     });
 
-    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG1, dev_addr >> ls_shift), {
+    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG1, dev_addr), {
       return -1;
     });
 
-    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG2, asize >> ls_shift), {
+    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG2, asize), {
       return -1;
     });
 
@@ -354,13 +366,13 @@ public:
 
     auto ls_shift = (int)std::log2(CACHE_BLOCK_SIZE);
 
-    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG0, staging_ioaddr_ >> ls_shift), {
+    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG0, staging_ioaddr_), {
       return -1;
     });
-    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG1, dev_addr >> ls_shift), {
+    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG1, dev_addr), {
       return -1;
     });
-    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG2, asize >> ls_shift), {
+    CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_ARG2, asize), {
       return -1;
     });
     CHECK_FPGA_ERR(api_.fpgaWriteMMIO64(fpga_, 0, MMIO_CMD_TYPE, CMD_MEM_READ), {
@@ -455,7 +467,7 @@ public:
         break;
       }
 
-      nanosleep(&sleep_time, nullptr);
+      //nanosleep(&sleep_time, nullptr);
       timeout -= sleep_time_ms;
     };
 

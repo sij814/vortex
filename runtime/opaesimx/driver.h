@@ -13,11 +13,13 @@
 
 #pragma once
 
-#ifdef OPAESIMX
-#include <fpga.h>
-#else
-#include <opaesimx/fpga.h>
-#endif
+extern "C" {
+  #ifdef OPAESIMX
+    #include <fpga.h>
+  #else
+    #include <opaesimx/fpga.h>
+  #endif
+}
 
 typedef fpga_result (*pfn_fpgaGetProperties)(fpga_token token, fpga_properties *prop);
 typedef fpga_result (*pfn_fpgaPropertiesSetObjectType)(fpga_properties prop, fpga_objtype objtype);
@@ -25,7 +27,7 @@ typedef fpga_result (*pfn_fpgaPropertiesSetGUID)(fpga_properties prop, fpga_guid
 typedef fpga_result (*pfn_fpgaDestroyProperties)(fpga_properties *prop);
 typedef fpga_result (*pfn_fpgaEnumerate)(const fpga_properties *filters, uint32_t num_filters, fpga_token *tokens, uint32_t max_tokens, uint32_t *num_matches);
 typedef fpga_result (*pfn_fpgaDestroyToken)(fpga_token *token);
-typedef fpga_result (*pfn_fpgaPropertiesGetLocalMemorySize)(fpga_properties prop, uint64_t *lms);
+typedef fpga_result (*pfn_fpgaPropertiesGetLocalMemorySize)(const fpga_properties *prop, uint64_t *lms);
 
 typedef fpga_result (*pfn_fpgaOpen)(fpga_token token, fpga_handle *handle, int flags);
 typedef fpga_result (*pfn_fpgaClose)(fpga_handle handle);

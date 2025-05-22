@@ -47,6 +47,7 @@ typedef void *fpga_properties;
 
 typedef uint8_t fpga_guid[16];
 
+// Function prototypes in single-line format
 fpga_result fpgaGetProperties(fpga_token token, fpga_properties *prop);
 fpga_result fpgaPropertiesSetObjectType(fpga_properties prop, fpga_objtype objtype);
 fpga_result fpgaPropertiesSetGUID(fpga_properties prop, fpga_guid guid);
@@ -61,7 +62,7 @@ fpga_result fpgaReleaseBuffer(fpga_handle handle, uint64_t wsid);
 fpga_result fpgaGetIOAddress(fpga_handle handle, uint64_t wsid, uint64_t *ioaddr);
 fpga_result fpgaWriteMMIO64(fpga_handle handle, uint32_t mmio_num, uint64_t offset, uint64_t value);
 fpga_result fpgaReadMMIO64(fpga_handle handle, uint32_t mmio_num, uint64_t offset, uint64_t *value);
-const char *fpgaErrStr(fpga_result e);
+const char* fpgaErrStr(fpga_result e);
 
 #ifdef __cplusplus
 }

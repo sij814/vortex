@@ -17,28 +17,28 @@
 
 namespace vortex {
 
-class opae_simx {
+class simx_device {
 public:
 
-  opae_simx();
-  virtual ~opae_simx();
+  simx_device();
+  virtual ~simx_device();
 
   int init();
 
   void shutdown();
 
-  int prepare_buffer(uint64_t len, void **buf_addr, uint64_t *wsid, int flags);
+  int start();
 
-  void release_buffer(uint64_t wsid);
+  void write_mem(const void* data, uint64_t addr, uint64_t size);
 
-  void get_io_address(uint64_t wsid, uint64_t *ioaddr);
+  void read_mem(void* data, uint64_t addr, uint64_t size);
 
-  void write_mmio64(uint32_t mmio_num, uint64_t offset, uint64_t value);
+  int dcr_write(uint32_t addr, uint32_t value);
 
-  void read_mmio64(uint32_t mmio_num, uint64_t offset, uint64_t *value);
+  void proc_tick();
 
+  bool get_running();
 private:
-
   class Impl;
   Impl* impl_;
 };

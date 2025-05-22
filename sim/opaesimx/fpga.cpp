@@ -137,7 +137,7 @@ extern fpga_result fpgaWriteMMIO64(fpga_handle handle, uint32_t mmio_num, uint64
     return FPGA_INVALID_PARAM;
 
   auto sim = reinterpret_cast<opae_simx*>(handle);
-  sim->write_mmio64(mmio_num, offset, value, 64);
+  sim->write_mmio64(mmio_num, offset, value);
 
   return FPGA_OK;
 }
@@ -147,7 +147,7 @@ extern fpga_result fpgaReadMMIO64(fpga_handle handle, uint32_t mmio_num, uint64_
     return FPGA_INVALID_PARAM;
 
   auto sim = reinterpret_cast<opae_simx*>(handle);
-  sim->read_mmio64(mmio_num, offset, value, 64);
+  sim->read_mmio64(mmio_num, offset, value);
 
   return FPGA_OK;
 }
